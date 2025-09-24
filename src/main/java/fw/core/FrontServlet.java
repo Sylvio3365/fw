@@ -12,7 +12,6 @@ public class FrontServlet extends HttpServlet {
     @Override
     protected void service(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        // Ici tu peux gérer toutes les méthodes HTTP (GET, POST, etc.)
 
         response.setContentType("text/html;charset=UTF-8");
 
@@ -22,6 +21,7 @@ public class FrontServlet extends HttpServlet {
             out.println("<body>");
             out.println("<h1>Bonjour depuis FrontServlet !</h1>");
             out.println("<p>Méthode HTTP utilisée : " + request.getMethod() + "</p>");
+            out.println("<p>URL : " + request.getRequestURL() + "</p>");
             out.println("</body>");
             out.println("</html>");
         }
