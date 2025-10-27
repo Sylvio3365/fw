@@ -1,3 +1,7 @@
-/home/sylvio/Bureau/5/naina/framework/framework/fw/src/main/java/fw/annotation/UrlHandler.java
-/home/sylvio/Bureau/5/naina/framework/framework/fw/src/main/java/fw/core/Main.java
-/home/sylvio/Bureau/5/naina/framework/framework/fw/src/main/java/fw/core/FrontServlet.java
+/home/sylvio/Bureau/5/naina/framework/FW/fw/src/main/java/fw/core/Main.java
+/home/sylvio/Bureau/5/naina/framework/FW/fw/src/main/java/fw/annotation/UrlHandler.java
+/home/sylvio/Bureau/5/naina/framework/FW/fw/src/main/java/fw/helper/UrlCM.java
+/home/sylvio/Bureau/5/naina/framework/FW/fw/src/main/java/fw/helper/CMethod.java
+/home/sylvio/Bureau/5/naina/framework/FW/fw/src/main/java/fw/annotation/Controller.java
+/home/sylvio/Bureau/5/naina/framework/FW/fw/src/main/java/fw/helper/Helper.java
+/home/sylvio/Bureau/5/naina/framework/FW/fw/src/main/java/fw/core/FrontServlet.java
