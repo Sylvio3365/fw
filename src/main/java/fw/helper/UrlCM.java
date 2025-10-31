@@ -13,4 +13,20 @@ public class UrlCM {
     public String toString() {
         return url + " -> " + (cm != null ? cm.toString() : "null");
     }
+
+    public String getUrl() {
+        return url;
+    }
+
+    public void setUrl(String url) {
+        this.url = url;
+    }
+
+    public CMethod getCm() {
+        return cm;
+    }
+
+    public void setCm(CMethod cm) {
+        this.cm = cm;
+    }
 }

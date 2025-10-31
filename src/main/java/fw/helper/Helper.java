@@ -10,6 +10,7 @@ import fw.annotation.MyUrl;
 
 
 public class Helper {
+    
     public List<UrlCM> getUrl(String packageName) {
         List<UrlCM> result = new ArrayList<>();
         Reflections reflections = new Reflections(packageName);
@@ -25,5 +26,14 @@ public class Helper {
             }
         }
         return result;
+    }
+
+    public UrlCM findByUrl (List<UrlCM> liste, String packageName) {
+        for (UrlCM urlCM : liste) {
+            if(urlCM.getUrl().equals(packageName)) {
+                return urlCM;
+            }
+        }
+        return null;
     }
 }
