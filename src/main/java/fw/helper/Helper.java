@@ -8,29 +8,30 @@ import org.reflections.Reflections;
 import fw.annotation.MyController;
 import fw.annotation.MyUrl;
 
-
 public class Helper {
-    
-    public List<UrlCM> getUrl(String packageName) {
+
+    public List<UrlCM> getUrl(List<String> packageNames) {
         List<UrlCM> result = new ArrayList<>();
-        Reflections reflections = new Reflections(packageName);
-        Set<Class<?>> classes = reflections.getTypesAnnotatedWith(MyController.class);
-        for (Class<?> clazz : classes) {
-            Method[] methods = clazz.getDeclaredMethods();
-            for (Method method : methods) {
-                if (method.isAnnotationPresent(MyUrl.class)) {
-                    MyUrl annotation = method.getAnnotation(MyUrl.class);
-                    String url = annotation.value();
-                    result.add(new UrlCM(url, new CMethod(clazz, method)));
+        for (String packageName : packageNames) {
+            Reflections reflections = new Reflections(packageName);
+            Set<Class<?>> classes = reflections.getTypesAnnotatedWith(MyController.class);
+            for (Class<?> clazz : classes) {
+                Method[] methods = clazz.getDeclaredMethods();
+                for (Method method : methods) {
+                    if (method.isAnnotationPresent(MyUrl.class)) {
+                        MyUrl annotation = method.getAnnotation(MyUrl.class);
+                        String url = annotation.value();
+                        result.add(new UrlCM(url, new CMethod(clazz, method)));
+                    }
                 }
             }
         }
         return result;
     }
 
-    public UrlCM findByUrl (List<UrlCM> liste, String packageName) {
+    public UrlCM findByUrl(List<UrlCM> liste, String packageName) {
         for (UrlCM urlCM : liste) {
-            if(urlCM.getUrl().equals(packageName)) {
+            if (urlCM.getUrl().equals(packageName)) {
                 return urlCM;
             }
         }

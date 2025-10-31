@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 
 import fw.helper.Helper;
@@ -21,7 +22,11 @@ public class FrontServlet extends HttpServlet {
     @Override
     public void init() throws ServletException {
         this.h = new Helper();
-        this.urlMappings = this.h.getUrl("controller");
+        
+        List<String> listePackage = new ArrayList<>();
+        listePackage.add("controller");
+
+        this.urlMappings = this.h.getUrl(listePackage);
     }
 
     @Override
