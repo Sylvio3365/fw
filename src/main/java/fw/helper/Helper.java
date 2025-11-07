@@ -1,17 +1,19 @@
 package fw.helper;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.reflections.Reflections;
 import fw.annotation.MyController;
 import fw.annotation.MyUrl;
+import jakarta.servlet.http.HttpServletRequest;
 
 public class Helper {
 
-    public List<UrlCM> getUrl(List<String> packageNames) {
-        List<UrlCM> result = new ArrayList<>();
+    public Map<String, CMethod> scan(List<String> packageNames) {
+        Map<String, CMethod> valiny = new HashMap<>();
         for (String packageName : packageNames) {
             Reflections reflections = new Reflections(packageName);
             Set<Class<?>> classes = reflections.getTypesAnnotatedWith(MyController.class);
@@ -21,20 +23,21 @@ public class Helper {
                     if (method.isAnnotationPresent(MyUrl.class)) {
                         MyUrl annotation = method.getAnnotation(MyUrl.class);
                         String url = annotation.value();
-                        result.add(new UrlCM(url, new CMethod(clazz, method)));
+                        valiny.put(url, new CMethod(clazz, method));
                     }
                 }
             }
         }
-        return result;
+        return valiny;
     }
 
-    public UrlCM findByUrl(List<UrlCM> liste, String packageName) {
-        for (UrlCM urlCM : liste) {
-            if (urlCM.getUrl().equals(packageName)) {
-                return urlCM;
-            }
-        }
-        return null;
+    public boolean findByUrl(Map<String, CMethod> liste, String url) {
+        return liste.containsKey(url);
+    }
+
+    public String getUrlAfterContext(HttpServletRequest request) {
+        String requestURI = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        return requestURI.substring(contextPath.length());
     }
 }

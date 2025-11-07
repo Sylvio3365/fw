@@ -10,23 +10,21 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
-
+import java.util.Map;
+import fw.helper.CMethod;
 import fw.helper.Helper;
-import fw.helper.UrlCM;
 
 public class FrontServlet extends HttpServlet {
 
     private Helper h;
-    private List<UrlCM> urlMappings;
+    private Map<String, CMethod> urlMappings;
 
     @Override
     public void init() throws ServletException {
         this.h = new Helper();
-        
         List<String> listePackage = new ArrayList<>();
         listePackage.add("controller");
-
-        this.urlMappings = this.h.getUrl(listePackage);
+        this.urlMappings = this.h.scan(listePackage);
     }
 
     @Override
@@ -53,15 +51,13 @@ public class FrontServlet extends HttpServlet {
     private void defaultServe(HttpServletRequest request, HttpServletResponse response)
             throws IOException {
         response.setContentType("text/html;charset=UTF-8");
-        UrlCM urlCm = this.h.findByUrl(this.urlMappings, this.getUrlAfterContext(request));
-        if (urlCm != null) {
+        String url = this.h.getUrlAfterContext(request);
+        if (this.h.findByUrl(urlMappings, url)) {
             try (PrintWriter out = response.getWriter()) {
                 out.println("<html><head><title>FrontServlet</title></head><body>");
                 out.println("<h1>URL trouvé</h1>");
-                out.println("<p>URL : " + urlCm.getUrl() + "</p>");
-                out.println("<p>Class : " + urlCm.getCm().getClazz().getCanonicalName() + "</p>");
-                out.println("<p>Method : " + urlCm.getCm().getMethod().getName() + "</p>");
-                out.println("</body></html>");
+                out.println("<p> URL : " + url + "</p>");
+                out.println("<p>" + urlMappings.get(url) + "</p>");
             }
         } else {
             try (PrintWriter out = response.getWriter()) {
@@ -72,9 +68,4 @@ public class FrontServlet extends HttpServlet {
         }
     }
 
-    private String getUrlAfterContext(HttpServletRequest request) {
-        String requestURI = request.getRequestURI();
-        String contextPath = request.getContextPath();
-        return requestURI.substring(contextPath.length());
-    }
 }
