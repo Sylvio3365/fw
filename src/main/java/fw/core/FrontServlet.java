@@ -1,5 +1,6 @@
 package fw.core;
 
+import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -8,8 +9,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import fw.helper.CMethod;
 import fw.helper.Helper;
@@ -17,14 +16,13 @@ import fw.helper.Helper;
 public class FrontServlet extends HttpServlet {
 
     private Helper h;
-    private Map<String, CMethod> urlMappings;
 
     @Override
     public void init() throws ServletException {
         this.h = new Helper();
-        List<String> listePackage = new ArrayList<>();
-        listePackage.add("controller");
-        this.urlMappings = this.h.scan(listePackage);
+        Map<String, CMethod> urlMappings = h.scan(h.getAllPackages());
+        ServletContext context = getServletContext();
+        context.setAttribute("urlMappings", urlMappings);
     }
 
     @Override
@@ -52,6 +50,8 @@ public class FrontServlet extends HttpServlet {
             throws IOException {
         response.setContentType("text/html;charset=UTF-8");
         String url = this.h.getUrlAfterContext(request);
+        ServletContext context = getServletContext();
+        Map<String, CMethod> urlMappings = (Map<String, CMethod>) context.getAttribute("urlMappings");
         if (this.h.findByUrl(urlMappings, url)) {
             try (PrintWriter out = response.getWriter()) {
                 out.println("<html><head><title>FrontServlet</title></head><body>");

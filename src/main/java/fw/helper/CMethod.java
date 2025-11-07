@@ -3,7 +3,6 @@ package fw.helper;
 import java.lang.reflect.Method;
 
 public class CMethod {
-    
     private Class<?> clazz;
     private Method method;
 
