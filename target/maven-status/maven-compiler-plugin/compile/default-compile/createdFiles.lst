@@ -2,4 +2,5 @@ fw/helper/Helper.class
 fw/annotation/MyUrl.class
 fw/core/FrontServlet.class
 fw/helper/CMethod.class
+fw/util/ModelView.class
 fw/annotation/MyController.class

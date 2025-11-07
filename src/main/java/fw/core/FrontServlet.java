@@ -1,5 +1,6 @@
 package fw.core;
 
+import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -14,6 +15,7 @@ import java.net.URL;
 import java.util.Map;
 import fw.helper.CMethod;
 import fw.helper.Helper;
+import fw.util.ModelView;
 
 public class FrontServlet extends HttpServlet {
 
@@ -55,7 +57,7 @@ public class FrontServlet extends HttpServlet {
 
     private void defaultServe(HttpServletRequest request, HttpServletResponse response)
             throws IOException, InstantiationException, IllegalAccessException, IllegalArgumentException,
-            InvocationTargetException, NoSuchMethodException, SecurityException {
+            InvocationTargetException, NoSuchMethodException, SecurityException, ServletException {
         response.setContentType("text/html;charset=UTF-8");
         String url = this.h.getUrlAfterContext(request);
         ServletContext context = getServletContext();
@@ -64,7 +66,6 @@ public class FrontServlet extends HttpServlet {
             CMethod cm = urlMappings.get(url);
             Class<?> cls = cm.getClazz();
             Method method = cm.getMethod();
-
             if (method.getReturnType().equals(String.class)) {
                 Object instance = cls.getDeclaredConstructor().newInstance();
                 Object result = method.invoke(instance);
@@ -76,7 +77,13 @@ public class FrontServlet extends HttpServlet {
                     out.println("<p> Resulat : " + result + "</p>");
                 }
             }
-
+            if (method.getReturnType().equals(ModelView.class)) {
+                Object instance = cls.getDeclaredConstructor().newInstance();
+                ModelView result = (ModelView) method.invoke(instance);
+                String view = result.getView();
+                RequestDispatcher rd = request.getRequestDispatcher(view);
+                rd.forward(request, response);
+            }
         } else {
             try (PrintWriter out = response.getWriter()) {
                 out.println("<html><head><title>FrontServlet</title></head><body>");
