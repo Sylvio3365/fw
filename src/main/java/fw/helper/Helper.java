@@ -50,6 +50,8 @@ public class Helper {
         }
     }
 
+    
+
     private boolean containsJavaFiles(File directory) {
         File[] files = directory.listFiles();
         if (files == null)
