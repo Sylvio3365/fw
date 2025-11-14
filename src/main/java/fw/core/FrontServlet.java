@@ -15,6 +15,7 @@ import java.net.URL;
 import java.util.Map;
 import fw.helper.CMethod;
 import fw.helper.Helper;
+import fw.util.Data;
 import fw.util.ModelView;
 
 public class FrontServlet extends HttpServlet {
@@ -80,9 +81,19 @@ public class FrontServlet extends HttpServlet {
             if (method.getReturnType().equals(ModelView.class)) {
                 Object instance = cls.getDeclaredConstructor().newInstance();
                 ModelView result = (ModelView) method.invoke(instance);
+
                 String view = result.getView();
+                Data data = result.getData();
+
+                request.setAttribute(data.getName(), data.getValeur());
                 RequestDispatcher rd = request.getRequestDispatcher(view);
                 rd.forward(request, response);
+            } else {
+                try (PrintWriter out = response.getWriter()) {
+                    out.println("<html><head><title>FrontServlet</title></head><body>");
+                    out.println("<h1>URL trouvé</h1>");
+                    out.println("<p> URL : " + url + "non supporte </p>");
+                }
             }
         } else {
             try (PrintWriter out = response.getWriter()) {
