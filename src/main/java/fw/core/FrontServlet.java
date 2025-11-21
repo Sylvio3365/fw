@@ -12,6 +12,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import fw.helper.CMethod;
 import fw.helper.Helper;
@@ -80,9 +82,22 @@ public class FrontServlet extends HttpServlet {
             if (method.getReturnType().equals(ModelView.class)) {
                 Object instance = cls.getDeclaredConstructor().newInstance();
                 ModelView result = (ModelView) method.invoke(instance);
+
                 String view = result.getView();
+                Map<String, Object> data = result.getData();
+                List<String> keys = new ArrayList<>(data.keySet());
+                for (int i = 0; i < data.size(); i++) {
+                    String key = keys.get(i);
+                    request.setAttribute(key, data.get(key));
+                }
                 RequestDispatcher rd = request.getRequestDispatcher(view);
                 rd.forward(request, response);
+            } else {
+                try (PrintWriter out = response.getWriter()) {
+                    out.println("<html><head><title>FrontServlet</title></head><body>");
+                    out.println("<h1>URL trouvé</h1>");
+                    out.println("<p> URL : " + url + "non supporte </p>");
+                }
             }
         } else {
             try (PrintWriter out = response.getWriter()) {
