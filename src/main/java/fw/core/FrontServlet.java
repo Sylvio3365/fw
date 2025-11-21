@@ -66,6 +66,9 @@ public class FrontServlet extends HttpServlet {
         Map<String, CMethod> urlMappings = (Map<String, CMethod>) context.getAttribute("urlMappings");
         if (this.h.findByUrl(urlMappings, url)) {
             CMethod cm = h.getUrlInMapping(url, urlMappings);
+            if (cm == null) {
+                throw new ServletException("Aucune méthode trouvée pour l'URL: " + url);
+            }
             Class<?> cls = cm.getClazz();
             Method method = cm.getMethod();
             if (method.getReturnType().equals(String.class)) {
