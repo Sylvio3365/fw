@@ -82,7 +82,6 @@ public class FrontServlet extends HttpServlet {
             if (method.getReturnType().equals(ModelView.class)) {
                 Object instance = cls.getDeclaredConstructor().newInstance();
                 ModelView result = (ModelView) method.invoke(instance);
-
                 String view = result.getView();
                 Map<String, Object> data = result.getData();
                 List<String> keys = new ArrayList<>(data.keySet());
