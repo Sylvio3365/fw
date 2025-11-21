@@ -12,10 +12,11 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import fw.helper.CMethod;
 import fw.helper.Helper;
-import fw.util.Data;
 import fw.util.ModelView;
 
 public class FrontServlet extends HttpServlet {
@@ -83,9 +84,12 @@ public class FrontServlet extends HttpServlet {
                 ModelView result = (ModelView) method.invoke(instance);
 
                 String view = result.getView();
-                Data data = result.getData();
-
-                request.setAttribute(data.getName(), data.getValeur());
+                Map<String, Object> data = result.getData();
+                List<String> keys = new ArrayList<>(data.keySet());
+                for (int i = 0; i < data.size(); i++) {
+                    String key = keys.get(i);
+                    request.setAttribute(key, data.get(key));
+                }
                 RequestDispatcher rd = request.getRequestDispatcher(view);
                 rd.forward(request, response);
             } else {

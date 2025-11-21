@@ -1,24 +1,32 @@
 package fw.util;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class ModelView {
 
     private String view;
-    private Data data;
+    private Map<String, Object> data;
+
+    public ModelView(String view) {
+        this.view = view;
+        this.data = new HashMap<>();
+    }
 
     public ModelView() {
+        this.data = new HashMap<>();
     }
 
-    public ModelView(String view, Data data) {
-        this.view = view;
-        this.data = data;
-    }
-
-    public Data getData() {
+    public Map<String, Object> getData() {
         return data;
     }
 
-    public void setData(Data data) {
+    public void setData(Map<String, Object> data) {
         this.data = data;
+    }
+
+    public void addItem(String key, Object value) {
+        this.data.put(key, value);
     }
 
     public String getView() {
