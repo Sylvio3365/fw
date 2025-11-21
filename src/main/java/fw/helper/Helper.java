@@ -13,6 +13,7 @@ import org.reflections.Reflections;
 import fw.annotation.MyController;
 import fw.annotation.MyUrl;
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.regex.Pattern;
 
 public class Helper {
 
@@ -86,7 +87,50 @@ public class Helper {
     }
 
     public boolean findByUrl(Map<String, CMethod> liste, String url) {
-        return liste.containsKey(url);
+        if (liste.containsKey(url)) {
+            return true;
+        }
+        for (String pattern : liste.keySet()) {
+            if (pattern.contains("{") && pattern.contains("}")) {
+                if (matchesUrlPattern(pattern, url)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public CMethod getUrlInMapping(String url, Map<String, CMethod> liste) {
+
+        CMethod exactMatch = liste.get(url);
+        
+        if (exactMatch != null) {
+            return exactMatch;
+        }
+
+        for (Map.Entry<String, CMethod> entry : liste.entrySet()) {
+            String pattern = entry.getKey();
+            if (pattern.contains("{") && pattern.contains("}") && matchesUrlPattern(pattern, url)) {
+                return entry.getValue();
+            }
+        }
+
+        return null;
+    }
+
+    private boolean matchesUrlPattern(String pattern, String url) {
+        try {
+            String regex = convertToRegex(pattern);
+            return Pattern.matches(regex, url);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private String convertToRegex(String pattern) {
+        String regex = pattern.replaceAll("([.*+?^$()|\\[\\]\\\\])", "\\\\$1");
+        regex = regex.replaceAll("\\{[^}]+\\}", "([^/]+)");
+        return "^" + regex + "$";
     }
 
     public String getUrlAfterContext(HttpServletRequest request) {
