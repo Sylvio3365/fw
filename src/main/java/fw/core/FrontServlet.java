@@ -69,16 +69,24 @@ public class FrontServlet extends HttpServlet {
             if (cm == null) {
                 throw new ServletException("Aucune méthode trouvée pour l'URL: " + url);
             }
+
             Class<?> cls = cm.getClazz();
             Method method = cm.getMethod();
+            
+            List<String> paramNames = h.getParametersName(method);
+
             if (method.getReturnType().equals(String.class)) {
                 Object instance = cls.getDeclaredConstructor().newInstance();
-                Object result = method.invoke(instance);
+    
+                Object[] arguments = { arg1 };
+                Object result = method.invoke(instance, arguments);
+                String teste = h.testeAffiche(method);
                 try (PrintWriter out = response.getWriter()) {
                     out.println("<html><head><title>FrontServlet</title></head><body>");
                     out.println("<h1>URL trouvé</h1>");
                     out.println("<p> URL : " + url + "</p>");
                     out.println("<p>" + urlMappings.get(url) + "</p>");
+                    out.println("<p>" + teste + "</p>");
                     out.println("<p> Resulat : " + result + "</p>");
                 }
             }

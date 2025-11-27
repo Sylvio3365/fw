@@ -2,6 +2,7 @@ package fw.helper;
 
 import java.io.File;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -101,20 +102,16 @@ public class Helper {
     }
 
     public CMethod getUrlInMapping(String url, Map<String, CMethod> liste) {
-
         CMethod exactMatch = liste.get(url);
-        
         if (exactMatch != null) {
             return exactMatch;
         }
-
         for (Map.Entry<String, CMethod> entry : liste.entrySet()) {
             String pattern = entry.getKey();
             if (pattern.contains("{") && pattern.contains("}") && matchesUrlPattern(pattern, url)) {
                 return entry.getValue();
             }
         }
-
         return null;
     }
 
@@ -137,5 +134,24 @@ public class Helper {
         String requestURI = request.getRequestURI();
         String contextPath = request.getContextPath();
         return requestURI.substring(contextPath.length());
+    }
+
+    // maka ny anaran'ny parametres methode
+    public List<String> getParametersName(Method m) {
+        Parameter[] parameters = m.getParameters();
+        List<String> valiny = new ArrayList<>();
+        for (Parameter p : parameters) {
+            valiny.add(p.getName());
+        }
+        return valiny;
+    }
+
+    public String testeAffiche(Method m) {
+        List<String> temp = this.getParametersName(m);
+        StringBuilder sb = new StringBuilder();
+        for (String s : temp) {
+            sb.append(s).append(" , ");
+        }
+        return sb.toString();
     }
 }
