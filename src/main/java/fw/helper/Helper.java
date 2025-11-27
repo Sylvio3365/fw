@@ -14,9 +14,12 @@ import java.util.regex.Pattern;
 
 import org.reflections.Reflections;
 
-import fw.annotation.MyController;
-import fw.annotation.MyRequestParam;
-import fw.annotation.MyUrl;
+import fw.annotation.controller.MyController;
+import fw.annotation.param.MyRequestParam;
+import fw.annotation.url.GetUrl;
+import fw.annotation.url.MyUrl;
+import fw.annotation.url.PostUrl;
+import fw.util.CMethod;
 import jakarta.servlet.http.HttpServletRequest;
 
 public class Helper {
@@ -78,8 +81,9 @@ public class Helper {
         for (String packageName : packageNames) {
             Reflections reflections = new Reflections(packageName);
             Set<Class<?>> classes = reflections.getTypesAnnotatedWith(MyController.class);
-            for (Class<?> clazz : classes)
+            for (Class<?> clazz : classes) {
                 scanControllerMethods(clazz, mappings);
+            }
         }
         return mappings;
     }
@@ -87,45 +91,91 @@ public class Helper {
     private void scanControllerMethods(Class<?> clazz, Map<String, CMethod> mappings) {
         Method[] methods = clazz.getDeclaredMethods();
         for (Method method : methods) {
+            // CORRECTION : Gérer chaque annotation séparément avec la bonne méthode HTTP
+            if (method.isAnnotationPresent(GetUrl.class)) {
+                GetUrl annotation = method.getAnnotation(GetUrl.class);
+                String url = annotation.value();
+                // CORRECTION : Stocker avec la clé URL + méthode pour éviter les conflits
+                String key = "GET:" + url;
+                mappings.put(key, new CMethod(clazz, method, "GET"));
+            }
+            if (method.isAnnotationPresent(PostUrl.class)) {
+                PostUrl annotation = method.getAnnotation(PostUrl.class);
+                String url = annotation.value();
+                String key = "POST:" + url;
+                mappings.put(key, new CMethod(clazz, method, "POST"));
+            }
             if (method.isAnnotationPresent(MyUrl.class)) {
                 MyUrl annotation = method.getAnnotation(MyUrl.class);
-                mappings.put(annotation.value(), new CMethod(clazz, method));
+                String url = annotation.value();
+                // Pour MyUrl, créer une entrée pour GET et POST
+                mappings.put("GET:" + url, new CMethod(clazz, method, "GET"));
+                mappings.put("POST:" + url, new CMethod(clazz, method, "POST"));
             }
         }
     }
 
     // ==================== GESTION DES URL ====================
 
-    public boolean findByUrl(Map<String, CMethod> mappings, String url) {
-        if (mappings.containsKey(url))
+    public boolean findByUrl(Map<String, CMethod> mappings, String url, HttpServletRequest request) {
+        String method = request.getMethod(); // GET, POST, etc.
+        String exactKey = method + ":" + url;
+
+        // Vérifier d'abord la correspondance exacte avec méthode HTTP
+        if (mappings.containsKey(exactKey)) {
             return true;
-        return mappings.keySet().stream()
-                .filter(pattern -> pattern.contains("{") && pattern.contains("}"))
-                .anyMatch(pattern -> matchesUrlPattern(pattern, url));
+        }
+
+        // Vérifier les patterns avec variables pour cette méthode HTTP
+        for (String key : mappings.keySet()) {
+            if (key.startsWith(method + ":") && key.contains("{") && key.contains("}")) {
+                String pattern = key.substring(method.length() + 1); // Enlever "METHOD:"
+                if (matchesUrlPattern(pattern, url)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
-    public CMethod getUrlInMapping(Map<String, CMethod> mappings, String url) {
-        CMethod exactMatch = mappings.get(url);
+    public CMethod getUrlInMapping(Map<String, CMethod> mappings, String url, HttpServletRequest request) {
+        String method = request.getMethod();
+        String exactKey = method + ":" + url;
+
+        // Correspondance exacte
+        CMethod exactMatch = mappings.get(exactKey);
         if (exactMatch != null)
             return exactMatch;
 
-        return mappings.entrySet().stream()
-                .filter(entry -> entry.getKey().contains("{") && entry.getKey().contains("}"))
-                .filter(entry -> matchesUrlPattern(entry.getKey(), url))
-                .map(Map.Entry::getValue)
-                .findFirst()
-                .orElse(null);
+        // Recherche par pattern
+        for (Map.Entry<String, CMethod> entry : mappings.entrySet()) {
+            String key = entry.getKey();
+            if (key.startsWith(method + ":") && key.contains("{") && key.contains("}")) {
+                String pattern = key.substring(method.length() + 1);
+                if (matchesUrlPattern(pattern, url)) {
+                    return entry.getValue();
+                }
+            }
+        }
+        return null;
     }
 
-    public String getOriginalUrl(Map<String, CMethod> mappings, String url) {
-        if (mappings.containsKey(url))
+    public String getOriginalUrl(Map<String, CMethod> mappings, String url, HttpServletRequest request) {
+        String method = request.getMethod();
+        String exactKey = method + ":" + url;
+
+        if (mappings.containsKey(exactKey))
             return url;
 
-        return mappings.keySet().stream()
-                .filter(pattern -> pattern.contains("{") && pattern.contains("}"))
-                .filter(pattern -> matchesUrlPattern(pattern, url))
-                .findFirst()
-                .orElse(url);
+        for (String key : mappings.keySet()) {
+            if (key.startsWith(method + ":") && key.contains("{") && key.contains("}")) {
+                String pattern = key.substring(method.length() + 1);
+                if (matchesUrlPattern(pattern, url)) {
+                    return pattern;
+                }
+            }
+        }
+        return url;
     }
 
     // ==================== UTILITAIRES REGEX ====================
@@ -164,7 +214,7 @@ public class Helper {
             String patternPart = patternParts[i];
             String urlPart = urlParts[i];
             if (patternPart.startsWith("{") && patternPart.endsWith("}")) {
-                String varName = patternPart.substring(1, patternPart.length() - 1);
+                String varName = patternPart.substring(1, patternParts[i].length() - 1);
                 variables.put(varName, urlPart);
             }
         }
