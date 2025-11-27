@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import org.reflections.Reflections;
 import fw.annotation.MyController;
+import fw.annotation.MyRequestParam;
 import fw.annotation.MyUrl;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.regex.Pattern;
@@ -178,15 +179,23 @@ public class Helper {
             return 0.0f;
         if (type.equals(boolean.class))
             return false;
-        return null; // Pour les types objet
+        return null;
     }
 
+    // 
     public Object[] getArgumentsWithValue(Method method, HttpServletRequest request) throws Exception {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
         for (int i = 0; i < parameters.length; i++) {
             Parameter p = parameters[i];
-            String nom = this.getParameterName(method, p);
+            boolean hasAnnotation = p.isAnnotationPresent(MyRequestParam.class);
+            String nom = null;
+            if (hasAnnotation) {
+                MyRequestParam annotation = p.getAnnotation(MyRequestParam.class);
+                nom = annotation.name();
+            } else {
+                nom = this.getParameterName(method, p);
+            }
             Class<?> type = p.getType();
             String value = request.getParameter(nom);
             Object temp = null;
