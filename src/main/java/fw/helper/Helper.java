@@ -146,6 +146,17 @@ public class Helper {
         return valiny;
     }
 
+    public String getParameterName(Method m, Parameter paramater) {
+        Parameter[] parameters = m.getParameters();
+        String valiny = null;
+        for (Parameter p : parameters) {
+            if (p.equals(paramater)) {
+                valiny = p.getName();
+            }
+        }
+        return valiny;
+    }
+
     public String testeAffiche(Method m) {
         List<String> temp = this.getParametersName(m);
         StringBuilder sb = new StringBuilder();
@@ -153,5 +164,58 @@ public class Helper {
             sb.append(s).append(" , ");
         }
         return sb.toString();
+    }
+
+    // maka valeur par default
+    public Object getDefaultValue(Class<?> type) {
+        if (type.equals(int.class))
+            return 0;
+        if (type.equals(double.class))
+            return 0.0;
+        if (type.equals(long.class))
+            return 0L;
+        if (type.equals(float.class))
+            return 0.0f;
+        if (type.equals(boolean.class))
+            return false;
+        return null; // Pour les types objet
+    }
+
+    public Object[] getArgumentsWithValue(Method method, HttpServletRequest request) throws Exception {
+        Parameter[] parameters = method.getParameters();
+        Object[] arguments = new Object[parameters.length];
+        for (int i = 0; i < parameters.length; i++) {
+            Parameter p = parameters[i];
+            String nom = this.getParameterName(method, p);
+            Class<?> type = p.getType();
+            String value = request.getParameter(nom);
+            Object temp = null;
+            try {
+                if (value == null) {
+                    temp = this.getDefaultValue(type);
+                } else if (type.equals(int.class) || type.equals(Integer.class)) {
+                    temp = Integer.parseInt(value);
+                } else if (type.equals(String.class)) {
+                    temp = value;
+                } else if (type.equals(double.class) || type.equals(Double.class)) {
+                    temp = Double.parseDouble(value);
+                } else if (type.equals(long.class) || type.equals(Long.class)) {
+                    temp = Long.parseLong(value);
+                } else if (type.equals(boolean.class) || type.equals(Boolean.class)) {
+                    temp = Boolean.parseBoolean(value);
+                } else if (type.equals(float.class) || type.equals(Float.class)) {
+                    temp = Float.parseFloat(value);
+                } else {
+                    throw new Exception("Type non supporté: " + type);
+                }
+            } catch (NumberFormatException e) {
+                throw new Exception(
+                        "Erreur de conversion pour le paramètre '" + nom + "' : '" + value + "' en "
+                                + type.getSimpleName(),
+                        e);
+            }
+            arguments[i] = temp;
+        }
+        return arguments;
     }
 }
