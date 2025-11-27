@@ -111,7 +111,6 @@ public class FrontServlet extends HttpServlet {
                     out.println("</body></html>");
                 }
             }
-
         } catch (Exception e) {
             try (PrintWriter out = response.getWriter()) {
                 out.println("<html><head><title>Erreur</title>");
