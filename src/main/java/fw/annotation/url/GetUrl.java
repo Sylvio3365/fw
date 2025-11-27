@@ -1,12 +1,14 @@
-package fw.annotation;
+package fw.annotation.url;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import fw.helper.HttpMethods;
 
-@Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface MyRequestParam {
-    String name();
+@Target(ElementType.METHOD)
+public @interface GetUrl {
+    String value() default "";
+    String method() default HttpMethods.GET;
 }

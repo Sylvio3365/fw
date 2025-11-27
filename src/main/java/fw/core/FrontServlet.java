@@ -12,8 +12,8 @@ import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Map;
-import fw.helper.CMethod;
 import fw.helper.Helper;
+import fw.util.CMethod;
 import fw.util.ModelView;
 
 public class FrontServlet extends HttpServlet {
@@ -64,17 +64,29 @@ public class FrontServlet extends HttpServlet {
             ServletContext context = getServletContext();
             Map<String, CMethod> urlMappings = (Map<String, CMethod>) context.getAttribute("urlMappings");
 
-            if (!this.h.findByUrl(urlMappings, url)) {
+            // CORRECTION : Passer la request pour vérifier la méthode HTTP
+            if (!this.h.findByUrl(urlMappings, url, request)) {
                 sendNotFound(response, url);
                 return;
             }
 
-            String originalUrl = h.getOriginalUrl(urlMappings, url);
-            CMethod cm = h.getUrlInMapping(urlMappings, url);
+            // CORRECTION : Passer la request pour récupérer l'URL originale avec méthode
+            // HTTP
+            String originalUrl = h.getOriginalUrl(urlMappings, url, request);
+            // CORRECTION : Passer la request pour récupérer la méthode avec vérification
+            // HTTP
+            CMethod cm = h.getUrlInMapping(urlMappings, url, request);
 
             if (cm == null) {
                 throw new ServletException("Aucune classe méthode trouvée pour l'URL: " + url);
             }
+
+            // Vérifier si la méthode HTTP correspond
+            if (!isHttpMethodAllowed(cm, request)) {
+                sendMethodNotAllowed(response, request.getMethod(), url);
+                return;
+            }
+
             // Si l'URL correspond exactement (sans variables)
             if (url.equals(originalUrl)) {
                 processExactMatch(request, response, url, originalUrl, cm);
@@ -86,6 +98,21 @@ public class FrontServlet extends HttpServlet {
         } catch (Exception e) {
             handleError(response, e);
         }
+    }
+
+    // ==================== VÉRIFICATION MÉTHODE HTTP ====================
+
+    private boolean isHttpMethodAllowed(CMethod cm, HttpServletRequest request) {
+        String requestMethod = request.getMethod(); // GET, POST, etc.
+        String methodHttp = cm.getHttpMethod(); // Méthode stockée dans CMethod
+
+        // Si c'est MyUrl, autoriser GET et POST
+        if ("MyUrl".equals(methodHttp)) {
+            return "GET".equals(requestMethod) || "POST".equals(requestMethod);
+        }
+
+        // Sinon vérifier la correspondance exacte
+        return requestMethod.equals(methodHttp);
     }
 
     // ==================== MÉTHODES AUXILIAIRES ====================
@@ -103,7 +130,7 @@ public class FrontServlet extends HttpServlet {
 
         if (returnType.equals(String.class)) {
             Object result = method.invoke(instance, arguments);
-            sendStringResponse(response, url, originalUrl, result);
+            sendStringResponse(response, url, originalUrl, result, cm.getHttpMethod());
         } else if (returnType.equals(ModelView.class)) {
             ModelView result = (ModelView) method.invoke(instance, arguments);
             forwardToView(request, response, result);
@@ -127,7 +154,7 @@ public class FrontServlet extends HttpServlet {
 
         if (returnType.equals(String.class)) {
             Object result = method.invoke(instance, arguments);
-            sendStringResponse(response, url, originalUrl, result);
+            sendStringResponse(response, url, originalUrl, result, cm.getHttpMethod());
         } else if (returnType.equals(ModelView.class)) {
             ModelView result = (ModelView) method.invoke(instance, arguments);
             forwardToView(request, response, result);
@@ -137,12 +164,13 @@ public class FrontServlet extends HttpServlet {
     }
 
     private void sendStringResponse(HttpServletResponse response, String url,
-            String originalUrl, Object result) throws IOException {
+            String originalUrl, Object result, String httpMethod) throws IOException {
         try (PrintWriter out = response.getWriter()) {
             out.println("<html><head><title>FrontServlet</title></head><body>");
             out.println("<h1>URL trouvé</h1>");
             out.println("<p>URL : " + url + "</p>");
             out.println("<p>Pattern : " + originalUrl + "</p>");
+            out.println("<p>Méthode HTTP : " + httpMethod + "</p>");
             out.println("<p>Résultat : " + result + "</p>");
             out.println("</body></html>");
         }
@@ -180,6 +208,15 @@ public class FrontServlet extends HttpServlet {
         }
     }
 
+    private void sendMethodNotAllowed(HttpServletResponse response, String method, String url) throws IOException {
+        try (PrintWriter out = response.getWriter()) {
+            out.println("<html><head><title>FrontServlet</title></head><body>");
+            out.println("<h1>405 - Method Not Allowed</h1>");
+            out.println("<p>Méthode " + method + " non autorisée pour l'URL : " + url + "</p>");
+            out.println("</body></html>");
+        }
+    }
+
     private void handleError(HttpServletResponse response, Exception e) throws IOException {
         try (PrintWriter out = response.getWriter()) {
             out.println("<html><head><title>Erreur</title>");
@@ -196,5 +233,4 @@ public class FrontServlet extends HttpServlet {
         }
         e.printStackTrace(); // Pour les logs du serveur
     }
-
 }

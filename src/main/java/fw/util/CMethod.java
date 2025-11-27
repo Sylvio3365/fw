@@ -1,14 +1,16 @@
-package fw.helper;
+package fw.util;
 
 import java.lang.reflect.Method;
 
 public class CMethod {
     private Class<?> clazz;
     private Method method;
+    private String httpMethod;
 
-    public CMethod(Class<?> clazz, Method method) {
+    public CMethod(Class<?> clazz, Method method, String httpMethod) {
         this.clazz = clazz;
         this.method = method;
+        this.httpMethod = httpMethod;
     }
 
     public Class<?> getClazz() {
@@ -27,11 +29,16 @@ public class CMethod {
         this.method = method;
     }
 
+    public String getHttpMethod() {
+        return httpMethod;
+    }
+
+    public void setHttpMethod(String httpMethod) {
+        this.httpMethod = httpMethod;
+    }
+
     @Override
     public String toString() {
-        return "ClasseEtMethode{" +
-                "class = " + clazz.getName() +
-                ", method = " + (method != null ? method.getName() : "null") +
-                '}';
+        return "CMethod [clazz=" + clazz + ", method=" + method + ", httpMethod=" + httpMethod + "]";
     }
 }
