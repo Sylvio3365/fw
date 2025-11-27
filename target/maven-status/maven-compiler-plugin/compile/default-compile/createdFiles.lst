@@ -4,3 +4,4 @@ fw/core/FrontServlet.class
 fw/helper/CMethod.class
 fw/util/ModelView.class
 fw/annotation/MyController.class
+fw/annotation/MyRequestParam.class
