@@ -10,14 +10,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.reflections.Reflections;
+
 import fw.annotation.MyController;
 import fw.annotation.MyRequestParam;
 import fw.annotation.MyUrl;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.regex.Pattern;
 
 public class Helper {
+
+    // ==================== SCANNING DE PACKAGES ====================
 
     public List<String> getAllPackages() {
         List<String> packages = new ArrayList<>();
@@ -36,18 +41,18 @@ public class Helper {
     }
 
     private void scanDirectoryForPackages(File directory, String currentPackage, List<String> packages) {
-        if (!directory.exists() || !directory.isDirectory()) {
+        if (!directory.exists() || !directory.isDirectory())
             return;
-        }
+
         File[] files = directory.listFiles();
         if (files == null)
             return;
+
         for (File file : files) {
             if (file.isDirectory()) {
                 String packageName = currentPackage.isEmpty() ? file.getName() : currentPackage + "." + file.getName();
-                if (containsJavaFiles(file)) {
+                if (containsJavaFiles(file))
                     packages.add(packageName);
-                }
                 scanDirectoryForPackages(file, packageName, packages);
             }
         }
@@ -59,62 +64,72 @@ public class Helper {
             return false;
 
         for (File file : files) {
-            if (file.isFile() && file.getName().endsWith(".class")) {
+            if (file.isFile() && file.getName().endsWith(".class"))
                 return true;
-            }
-            if (file.isDirectory() && containsJavaFiles(file)) {
+            if (file.isDirectory() && containsJavaFiles(file))
                 return true;
-            }
         }
         return false;
     }
 
+    // ==================== SCANNING DE CONTROLEURS ====================
+
     public Map<String, CMethod> scan(List<String> packageNames) {
-        Map<String, CMethod> valiny = new HashMap<>();
+        Map<String, CMethod> mappings = new HashMap<>();
         for (String packageName : packageNames) {
             Reflections reflections = new Reflections(packageName);
             Set<Class<?>> classes = reflections.getTypesAnnotatedWith(MyController.class);
-            for (Class<?> clazz : classes) {
-                Method[] methods = clazz.getDeclaredMethods();
-                for (Method method : methods) {
-                    if (method.isAnnotationPresent(MyUrl.class)) {
-                        MyUrl annotation = method.getAnnotation(MyUrl.class);
-                        String url = annotation.value();
-                        valiny.put(url, new CMethod(clazz, method));
-                    }
-                }
-            }
+            for (Class<?> clazz : classes)
+                scanControllerMethods(clazz, mappings);
         }
-        return valiny;
+        return mappings;
     }
 
-    public boolean findByUrl(Map<String, CMethod> liste, String url) {
-        if (liste.containsKey(url)) {
+    private void scanControllerMethods(Class<?> clazz, Map<String, CMethod> mappings) {
+        Method[] methods = clazz.getDeclaredMethods();
+        for (Method method : methods) {
+            if (method.isAnnotationPresent(MyUrl.class)) {
+                MyUrl annotation = method.getAnnotation(MyUrl.class);
+                mappings.put(annotation.value(), new CMethod(clazz, method));
+            }
+        }
+    }
+
+    // ==================== GESTION DES URL ====================
+
+    public boolean findByUrl(Map<String, CMethod> mappings, String url) {
+        if (mappings.containsKey(url))
             return true;
-        }
-        for (String pattern : liste.keySet()) {
-            if (pattern.contains("{") && pattern.contains("}")) {
-                if (matchesUrlPattern(pattern, url)) {
-                    return true;
-                }
-            }
-        }
-        return false;
+        return mappings.keySet().stream()
+                .filter(pattern -> pattern.contains("{") && pattern.contains("}"))
+                .anyMatch(pattern -> matchesUrlPattern(pattern, url));
     }
 
-    public CMethod getUrlInMapping(String url, Map<String, CMethod> liste) {
-        CMethod exactMatch = liste.get(url);
-        if (exactMatch != null) {
+    public CMethod getUrlInMapping(Map<String, CMethod> mappings, String url) {
+        CMethod exactMatch = mappings.get(url);
+        if (exactMatch != null)
             return exactMatch;
-        }
-        for (Map.Entry<String, CMethod> entry : liste.entrySet()) {
-            String pattern = entry.getKey();
-            if (pattern.contains("{") && pattern.contains("}") && matchesUrlPattern(pattern, url)) {
-                return entry.getValue();
-            }
-        }
-        return null;
+
+        return mappings.entrySet().stream()
+                .filter(entry -> entry.getKey().contains("{") && entry.getKey().contains("}"))
+                .filter(entry -> matchesUrlPattern(entry.getKey(), url))
+                .map(Map.Entry::getValue)
+                .findFirst()
+                .orElse(null);
     }
+
+    public String getOriginalUrl(Map<String, CMethod> mappings, String url) {
+        if (mappings.containsKey(url))
+            return url;
+
+        return mappings.keySet().stream()
+                .filter(pattern -> pattern.contains("{") && pattern.contains("}"))
+                .filter(pattern -> matchesUrlPattern(pattern, url))
+                .findFirst()
+                .orElse(url);
+    }
+
+    // ==================== UTILITAIRES REGEX ====================
 
     private boolean matchesUrlPattern(String pattern, String url) {
         try {
@@ -131,44 +146,130 @@ public class Helper {
         return "^" + regex + "$";
     }
 
+    public Map<String, String> extractPathVariables(String pattern, String url) {
+        Map<String, String> variables = new HashMap<>();
+        if (!matchesUrlPattern(pattern, url)) {
+            return variables;
+        }
+        return extractPathVariablesBySegmentation(pattern, url);
+    }
+
+    private Map<String, String> extractPathVariablesBySegmentation(String pattern, String url) {
+        Map<String, String> variables = new HashMap<>();
+        String[] patternParts = pattern.split("/");
+        String[] urlParts = url.split("/");
+        if (patternParts.length != urlParts.length) {
+            return variables;
+        }
+        for (int i = 0; i < patternParts.length; i++) {
+            String patternPart = patternParts[i];
+            String urlPart = urlParts[i];
+            if (patternPart.startsWith("{") && patternPart.endsWith("}")) {
+                String varName = patternPart.substring(1, patternPart.length() - 1);
+                variables.put(varName, urlPart);
+            }
+        }
+        return variables;
+    }
+
+    // ==================== GESTION DES REQUÊTES ====================
+
     public String getUrlAfterContext(HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         String contextPath = request.getContextPath();
         return requestURI.substring(contextPath.length());
     }
 
-    // maka ny anaran'ny parametres methode
-    public List<String> getParametersName(Method m) {
-        Parameter[] parameters = m.getParameters();
-        List<String> valiny = new ArrayList<>();
-        for (Parameter p : parameters) {
-            valiny.add(p.getName());
+    // ==================== GESTION DES PARAMÈTRES ====================
+
+    public List<String> getParametersName(Method method) {
+        List<String> names = new ArrayList<>();
+        for (Parameter param : method.getParameters()) {
+            names.add(getParameterName(method, param));
         }
-        return valiny;
+        return names;
     }
 
-    public String getParameterName(Method m, Parameter paramater) {
-        Parameter[] parameters = m.getParameters();
-        String valiny = null;
-        for (Parameter p : parameters) {
-            if (p.equals(paramater)) {
-                valiny = p.getName();
+    public String getParameterName(Method method, Parameter parameter) {
+        if (parameter.isAnnotationPresent(MyRequestParam.class)) {
+            MyRequestParam annotation = parameter.getAnnotation(MyRequestParam.class);
+            return annotation.name();
+        }
+        return parameter.getName();
+    }
+
+    public String formatMethodParameters(Method method) {
+        List<String> params = getParametersName(method);
+        return String.join(" , ", params);
+    }
+
+    // ==================== CONVERSION DES ARGUMENTS ====================
+
+    public Object[] getArgumentsWithValue(Method method, HttpServletRequest request) throws Exception {
+        Parameter[] parameters = method.getParameters();
+        Object[] arguments = new Object[parameters.length];
+        for (int i = 0; i < parameters.length; i++) {
+            arguments[i] = convertParameter(parameters[i], method, request);
+        }
+        return arguments;
+    }
+
+    public Object[] getArgumentsWithValue(Method method, Map<String, String> pathVariables) throws Exception {
+        Parameter[] parameters = method.getParameters();
+        Object[] arguments = new Object[parameters.length];
+
+        for (int i = 0; i < parameters.length; i++) {
+            Parameter parameter = parameters[i];
+            String name = getParameterName(method, parameter);
+            Class<?> type = parameter.getType();
+            String stringValue = pathVariables.get(name);
+            Object value;
+            if (stringValue == null) {
+                value = getDefaultValue(type);
+            } else {
+                value = convertStringToType(stringValue, type, name);
             }
+            arguments[i] = value;
         }
-        return valiny;
+        return arguments;
     }
 
-    public String testeAffiche(Method m) {
-        List<String> temp = this.getParametersName(m);
-        StringBuilder sb = new StringBuilder();
-        for (String s : temp) {
-            sb.append(s).append(" , ");
+    private Object convertParameter(Parameter parameter, Method method, HttpServletRequest request) throws Exception {
+        String paramName = getParameterName(method, parameter);
+        String stringValue = request.getParameter(paramName);
+        Class<?> paramType = parameter.getType();
+
+        if (stringValue == null) {
+            return getDefaultValue(paramType);
         }
-        return sb.toString();
+
+        return convertStringToType(stringValue, paramType, paramName);
     }
 
-    // maka valeur par default
-    public Object getDefaultValue(Class<?> type) {
+    private Object convertStringToType(String value, Class<?> targetType, String paramName) throws Exception {
+        try {
+            if (targetType.equals(String.class))
+                return value;
+            if (targetType.equals(int.class) || targetType.equals(Integer.class))
+                return Integer.parseInt(value);
+            if (targetType.equals(double.class) || targetType.equals(Double.class))
+                return Double.parseDouble(value);
+            if (targetType.equals(long.class) || targetType.equals(Long.class))
+                return Long.parseLong(value);
+            if (targetType.equals(boolean.class) || targetType.equals(Boolean.class))
+                return Boolean.parseBoolean(value);
+            if (targetType.equals(float.class) || targetType.equals(Float.class))
+                return Float.parseFloat(value);
+
+            throw new Exception("Type non supporté: " + targetType);
+        } catch (NumberFormatException e) {
+            throw new Exception(
+                    "Erreur de conversion pour '" + paramName + "' : '" + value + "' en " + targetType.getSimpleName(),
+                    e);
+        }
+    }
+
+    private Object getDefaultValue(Class<?> type) {
         if (type.equals(int.class))
             return 0;
         if (type.equals(double.class))
@@ -180,51 +281,5 @@ public class Helper {
         if (type.equals(boolean.class))
             return false;
         return null;
-    }
-
-    // maka ny valeur sy ny type arguments
-    public Object[] getArgumentsWithValue(Method method, HttpServletRequest request) throws Exception {
-        Parameter[] parameters = method.getParameters();
-        Object[] arguments = new Object[parameters.length];
-        for (int i = 0; i < parameters.length; i++) {
-            Parameter p = parameters[i];
-            boolean hasAnnotation = p.isAnnotationPresent(MyRequestParam.class);
-            String nom = null;
-            if (hasAnnotation) {
-                MyRequestParam annotation = p.getAnnotation(MyRequestParam.class);
-                nom = annotation.name();
-            } else {
-                nom = this.getParameterName(method, p);
-            }
-            Class<?> type = p.getType();
-            String value = request.getParameter(nom);
-            Object temp = null;
-            try {
-                if (value == null) {
-                    temp = this.getDefaultValue(type);
-                } else if (type.equals(int.class) || type.equals(Integer.class)) {
-                    temp = Integer.parseInt(value);
-                } else if (type.equals(String.class)) {
-                    temp = value;
-                } else if (type.equals(double.class) || type.equals(Double.class)) {
-                    temp = Double.parseDouble(value);
-                } else if (type.equals(long.class) || type.equals(Long.class)) {
-                    temp = Long.parseLong(value);
-                } else if (type.equals(boolean.class) || type.equals(Boolean.class)) {
-                    temp = Boolean.parseBoolean(value);
-                } else if (type.equals(float.class) || type.equals(Float.class)) {
-                    temp = Float.parseFloat(value);
-                } else {
-                    throw new Exception("Type non supporté: " + type);
-                }
-            } catch (NumberFormatException e) {
-                throw new Exception(
-                        "Erreur de conversion pour le paramètre '" + nom + "' : '" + value + "' en "
-                                + type.getSimpleName(),
-                        e);
-            }
-            arguments[i] = temp;
-        }
-        return arguments;
     }
 }
