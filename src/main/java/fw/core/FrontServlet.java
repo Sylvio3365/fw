@@ -82,7 +82,7 @@ public class FrontServlet extends HttpServlet {
                         out.println("<html><head><title>FrontServlet</title></head><body>");
                         out.println("<h1>URL trouvé</h1>");
                         out.println("<p> URL : " + url + "</p>");
-                        out.println("<p>" + urlMappings.get(url) + "</p>");
+                        out.println("<p> " + urlMappings.get(url) + "</p>");
                         out.println("<p> Resultat : " + result + "</p>");
                     }
                 } else if (method.getReturnType().equals(ModelView.class)) {
