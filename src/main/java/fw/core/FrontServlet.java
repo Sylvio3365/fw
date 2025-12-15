@@ -9,8 +9,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.HashMap;
 import java.util.Map;
 import fw.helper.Helper;
 import fw.util.CMethod;
@@ -64,58 +66,45 @@ public class FrontServlet extends HttpServlet {
             ServletContext context = getServletContext();
             Map<String, CMethod> urlMappings = (Map<String, CMethod>) context.getAttribute("urlMappings");
 
-            // CORRECTION : Passer la request pour vérifier la méthode HTTP
             if (!this.h.findByUrl(urlMappings, url, request)) {
                 sendNotFound(response, url);
                 return;
             }
 
-            // CORRECTION : Passer la request pour récupérer l'URL originale avec méthode
-            // HTTP
             String originalUrl = h.getOriginalUrl(urlMappings, url, request);
-            // CORRECTION : Passer la request pour récupérer la méthode avec vérification
-            // HTTP
             CMethod cm = h.getUrlInMapping(urlMappings, url, request);
 
             if (cm == null) {
                 throw new ServletException("Aucune classe méthode trouvée pour l'URL: " + url);
             }
 
-            // Vérifier si la méthode HTTP correspond
             if (!isHttpMethodAllowed(cm, request)) {
                 sendMethodNotAllowed(response, request.getMethod(), url);
                 return;
             }
-
-            // Si l'URL correspond exactement (sans variables)
             if (url.equals(originalUrl)) {
+                System.out.println("mitovy ilay url");
                 processExactMatch(request, response, url, originalUrl, cm);
-            }
-            // Si l'URL contient des variables de chemin
-            else {
+            } else {
+                System.out.println("Tsy mitovy ilay url");
                 processPatternMatch(request, response, url, originalUrl, cm, urlMappings);
             }
+            
         } catch (Exception e) {
             handleError(response, e);
         }
     }
 
-    // ==================== VÉRIFICATION MÉTHODE HTTP ====================
-
     private boolean isHttpMethodAllowed(CMethod cm, HttpServletRequest request) {
         String requestMethod = request.getMethod(); // GET, POST, etc.
         String methodHttp = cm.getHttpMethod(); // Méthode stockée dans CMethod
 
-        // Si c'est MyUrl, autoriser GET et POST
         if ("MyUrl".equals(methodHttp)) {
             return "GET".equals(requestMethod) || "POST".equals(requestMethod);
         }
 
-        // Sinon vérifier la correspondance exacte
         return requestMethod.equals(methodHttp);
     }
-
-    // ==================== MÉTHODES AUXILIAIRES ====================
 
     private void processExactMatch(HttpServletRequest request, HttpServletResponse response,
             String url, String originalUrl, CMethod cm)
@@ -125,9 +114,7 @@ public class FrontServlet extends HttpServlet {
         Method method = cm.getMethod();
         Object[] arguments = h.getArgumentsWithValue(method, request);
         Object instance = cls.getDeclaredConstructor().newInstance();
-
         Class<?> returnType = method.getReturnType();
-
         if (returnType.equals(String.class)) {
             Object result = method.invoke(instance, arguments);
             sendStringResponse(response, url, originalUrl, result, cm.getHttpMethod());
@@ -143,10 +130,8 @@ public class FrontServlet extends HttpServlet {
             String url, String originalUrl, CMethod cm,
             Map<String, CMethod> urlMappings)
             throws Exception {
-
         Class<?> cls = cm.getClazz();
         Method method = cm.getMethod();
-
         Map<String, String> pathVariables = h.extractPathVariables(originalUrl, url);
         Object[] arguments = h.getArgumentsWithValue(method, pathVariables);
         Object instance = cls.getDeclaredConstructor().newInstance();
@@ -231,6 +216,6 @@ public class FrontServlet extends HttpServlet {
             out.println("</div>");
             out.println("</body></html>");
         }
-        e.printStackTrace(); // Pour les logs du serveur
+        e.printStackTrace();
     }
 }

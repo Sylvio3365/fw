@@ -1,9 +1,9 @@
 fw/annotation/url/GetUrl.class
 fw/helper/Helper.class
 fw/annotation/controller/MyController.class
+fw/method/HttpMethods.class
 fw/core/FrontServlet.class
 fw/util/ModelView.class
-fw/helper/HttpMethods.class
 fw/util/CMethod.class
 fw/annotation/url/MyUrl.class
 fw/annotation/param/MyRequestParam.class

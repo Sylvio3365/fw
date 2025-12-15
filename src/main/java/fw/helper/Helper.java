@@ -3,6 +3,8 @@ package fw.helper;
 import java.io.File;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -113,6 +115,52 @@ public class Helper {
                 mappings.put("POST:" + url, new CMethod(clazz, method, "POST"));
             }
         }
+    }
+
+    // mijery raha misy argument Map<String, Object> ilay argument anilay fonction
+    public boolean misyMapStringObjectVe(Method m) {
+        Parameter[] parameters = m.getParameters();
+        for (Parameter p : parameters) {
+            if (this.mapStringObjectVe(p)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean mapStringObjectVe(Parameter p) {
+        if (Map.class.isAssignableFrom(p.getType())) {
+            Type type = p.getParameterizedType();
+            if (type instanceof ParameterizedType) {
+                ParameterizedType paramType = (ParameterizedType) type;
+                Type[] typeArguments = paramType.getActualTypeArguments();
+                if (typeArguments.length == 2 &&
+                        typeArguments[0].equals(String.class) &&
+                        typeArguments[1].equals(Object.class)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public Parameter getMapStringObject(Method m) {
+        Parameter[] parameters = m.getParameters();
+        for (Parameter p : parameters) {
+            if (Map.class.isAssignableFrom(p.getType())) {
+                Type type = p.getParameterizedType();
+                if (type instanceof ParameterizedType) {
+                    ParameterizedType paramType = (ParameterizedType) type;
+                    Type[] typeArguments = paramType.getActualTypeArguments();
+                    if (typeArguments.length == 2 &&
+                            typeArguments[0].equals(String.class) &&
+                            typeArguments[1].equals(Object.class)) {
+                        return p;
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     // ==================== GESTION DES URL ====================
@@ -258,7 +306,24 @@ public class Helper {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
         for (int i = 0; i < parameters.length; i++) {
-            arguments[i] = convertParameter(parameters[i], method, request);
+            Parameter p = parameters[i];
+            if (this.mapStringObjectVe(p)) {
+                // raha map <obejct , string>
+                Map<String, String[]> allParams = request.getParameterMap();
+                Map<String, Object> paramMap = new HashMap<>();
+                for (Map.Entry<String, String[]> entry : allParams.entrySet()) {
+                    if (entry.getValue().length == 1) {
+                        paramMap.put(entry.getKey(), entry.getValue()[0]);
+                    } else {
+                        paramMap.put(entry.getKey(), entry.getValue());
+                    }
+                }
+                arguments[i] = paramMap;
+                // System.out.println("atooo");
+                // System.out.println(arguments[i].toString());
+            } else {
+                arguments[i] = convertParameter(parameters[i], method, request);
+            }
         }
         return arguments;
     }
@@ -266,7 +331,6 @@ public class Helper {
     public Object[] getArgumentsWithValue(Method method, Map<String, String> pathVariables) throws Exception {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
-
         for (int i = 0; i < parameters.length; i++) {
             Parameter parameter = parameters[i];
             String name = getParameterName(method, parameter);
@@ -287,11 +351,9 @@ public class Helper {
         String paramName = getParameterName(method, parameter);
         String stringValue = request.getParameter(paramName);
         Class<?> paramType = parameter.getType();
-
         if (stringValue == null) {
             return getDefaultValue(paramType);
         }
-
         return convertStringToType(stringValue, paramType, paramName);
     }
 
