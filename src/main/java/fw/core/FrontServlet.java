@@ -9,10 +9,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.HashMap;
 import java.util.Map;
 import fw.helper.Helper;
 import fw.util.CMethod;
@@ -89,7 +87,7 @@ public class FrontServlet extends HttpServlet {
                 System.out.println("Tsy mitovy ilay url");
                 processPatternMatch(request, response, url, originalUrl, cm, urlMappings);
             }
-            
+
         } catch (Exception e) {
             handleError(response, e);
         }
@@ -133,7 +131,7 @@ public class FrontServlet extends HttpServlet {
         Class<?> cls = cm.getClazz();
         Method method = cm.getMethod();
         Map<String, String> pathVariables = h.extractPathVariables(originalUrl, url);
-        Object[] arguments = h.getArgumentsWithValue(method, pathVariables);
+        Object[] arguments = h.getArgumentsWithValue(method, pathVariables, request);
         Object instance = cls.getDeclaredConstructor().newInstance();
         Class<?> returnType = method.getReturnType();
 

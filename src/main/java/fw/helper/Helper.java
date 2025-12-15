@@ -328,21 +328,38 @@ public class Helper {
         return arguments;
     }
 
-    public Object[] getArgumentsWithValue(Method method, Map<String, String> pathVariables) throws Exception {
+    public Object[] getArgumentsWithValue(Method method, Map<String, String> pathVariables, HttpServletRequest request)
+            throws Exception {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
         for (int i = 0; i < parameters.length; i++) {
             Parameter parameter = parameters[i];
-            String name = getParameterName(method, parameter);
-            Class<?> type = parameter.getType();
-            String stringValue = pathVariables.get(name);
-            Object value;
-            if (stringValue == null) {
-                value = getDefaultValue(type);
+            if (this.mapStringObjectVe(parameter)) {
+                // raha map <obejct , string>
+                Map<String, String[]> allParams = request.getParameterMap();
+                Map<String, Object> paramMap = new HashMap<>();
+                for (Map.Entry<String, String[]> entry : allParams.entrySet()) {
+                    if (entry.getValue().length == 1) {
+                        paramMap.put(entry.getKey(), entry.getValue()[0]);
+                    } else {
+                        paramMap.put(entry.getKey(), entry.getValue());
+                    }
+                }
+                arguments[i] = paramMap;
+                // System.out.println("atooo");
+                // System.out.println(arguments[i].toString());
             } else {
-                value = convertStringToType(stringValue, type, name);
+                String name = getParameterName(method, parameter);
+                Class<?> type = parameter.getType();
+                String stringValue = pathVariables.get(name);
+                Object value;
+                if (stringValue == null) {
+                    value = getDefaultValue(type);
+                } else {
+                    value = convertStringToType(stringValue, type, name);
+                }
+                arguments[i] = value;
             }
-            arguments[i] = value;
         }
         return arguments;
     }
