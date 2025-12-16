@@ -81,7 +81,6 @@ public class FrontServlet extends HttpServlet {
                 System.out.println("Tsy mitovy ilay url");
                 processPatternMatch(request, response, url, originalUrl, cm, urlMappings);
             }
-
         } catch (Exception e) {
             handleError(response, e);
         }
@@ -99,7 +98,6 @@ public class FrontServlet extends HttpServlet {
     private void processExactMatch(HttpServletRequest request, HttpServletResponse response,
             String url, String originalUrl, CMethod cm)
             throws Exception {
-
         Class<?> cls = cm.getClazz();
         Method method = cm.getMethod();
         Object[] arguments = h.getArgumentsWithValue(method, request);

@@ -1,12 +1,14 @@
 package fw.helper;
 
 import java.io.File;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
@@ -305,6 +307,7 @@ public class Helper {
             Parameter p = parameters[i];
             if (this.mapStringObjectVe(p)) {
                 // raha map <obejct , string>
+                System.out.println("Type Map<String,Object> :" + this.getParameterName(method, p));
                 Map<String, String[]> allParams = request.getParameterMap();
                 Map<String, Object> paramMap = new HashMap<>();
                 for (Map.Entry<String, String[]> entry : allParams.entrySet()) {
@@ -315,11 +318,45 @@ public class Helper {
                     }
                 }
                 arguments[i] = paramMap;
-                // System.out.println("atooo");
-                // System.out.println(arguments[i].toString());
-                /// ampiana condtion hoe rah type primitif , sinon rah emp
-            } else {
+            } else if (this.primitifVe(p)) {
+                System.out.println("Type primitive : " + this.getParameterName(method, p));
                 arguments[i] = convertParameter(parameters[i], method, request);
+            } else {
+                String nomDuParametre = this.getParameterName(method, p);
+                System.out.println("Type :" + p.getType());
+                System.out.println(nomDuParametre);
+
+                Class<?> paramType = p.getType();
+
+                try {
+                    Object instance = paramType.getDeclaredConstructor().newInstance();
+                    System.out.println("Instance créée: " + instance);
+                    Field [] attributs = instance.getClass().getFields();
+                    for (Field field : attributs) {
+                        
+                    }
+                } catch (NoSuchMethodException e) {
+                    throw new Exception(e.getMessage());
+                } catch (Exception e) {
+                    throw e;
+                }
+                Map<String, String[]> allParams = request.getParameterMap();
+                // Boucle sur les entrées de la Map
+                for (Map.Entry<String, String[]> entry : allParams.entrySet()) {
+                    String paramName = entry.getKey();
+                    String[] paramValues = entry.getValue();
+
+                    System.out.print(paramName + " = ");
+                    if (paramValues != null && paramValues.length > 0) {
+                        if (paramValues.length == 1) {
+                            System.out.println(paramValues[0]);
+                        } else {
+                            System.out.println(Arrays.toString(paramValues));
+                        }
+                    } else {
+                        System.out.println("null ou vide");
+                    }
+                }
             }
         }
         return arguments;
@@ -392,6 +429,16 @@ public class Helper {
                     "Erreur de conversion pour '" + paramName + "' : '" + value + "' en " + targetType.getSimpleName(),
                     e);
         }
+    }
+
+    public boolean primitifVe(Parameter p) {
+        boolean valiny = false;
+        if (p.getType().equals(int.class) || p.getType().equals(double.class) ||
+                p.getType().equals(float.class) || p.getType().equals(String.class)
+                || p.getType().equals(boolean.class)) {
+            valiny = true;
+        }
+        return valiny;
     }
 
     private Object getDefaultValue(Class<?> type) {
