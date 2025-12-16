@@ -1,4 +1,4 @@
-package fw.helper;
+package fw.method;
 
 public class HttpMethods {
     public static final String GET = "GET";

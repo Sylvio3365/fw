@@ -3,6 +3,8 @@ package fw.helper;
 import java.io.File;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Enumeration;
@@ -91,11 +93,9 @@ public class Helper {
     private void scanControllerMethods(Class<?> clazz, Map<String, CMethod> mappings) {
         Method[] methods = clazz.getDeclaredMethods();
         for (Method method : methods) {
-            // CORRECTION : Gérer chaque annotation séparément avec la bonne méthode HTTP
             if (method.isAnnotationPresent(GetUrl.class)) {
                 GetUrl annotation = method.getAnnotation(GetUrl.class);
                 String url = annotation.value();
-                // CORRECTION : Stocker avec la clé URL + méthode pour éviter les conflits
                 String key = "GET:" + url;
                 mappings.put(key, new CMethod(clazz, method, "GET"));
             }
@@ -113,6 +113,52 @@ public class Helper {
                 mappings.put("POST:" + url, new CMethod(clazz, method, "POST"));
             }
         }
+    }
+
+    // mijery raha misy argument Map<String, Object> ilay argument anilay fonction
+    public boolean misyMapStringObjectVe(Method m) {
+        Parameter[] parameters = m.getParameters();
+        for (Parameter p : parameters) {
+            if (this.mapStringObjectVe(p)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean mapStringObjectVe(Parameter p) {
+        if (Map.class.isAssignableFrom(p.getType())) {
+            Type type = p.getParameterizedType();
+            if (type instanceof ParameterizedType) {
+                ParameterizedType paramType = (ParameterizedType) type;
+                Type[] typeArguments = paramType.getActualTypeArguments();
+                if (typeArguments.length == 2 &&
+                        typeArguments[0].equals(String.class) &&
+                        typeArguments[1].equals(Object.class)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public Parameter getMapStringObject(Method m) {
+        Parameter[] parameters = m.getParameters();
+        for (Parameter p : parameters) {
+            if (Map.class.isAssignableFrom(p.getType())) {
+                Type type = p.getParameterizedType();
+                if (type instanceof ParameterizedType) {
+                    ParameterizedType paramType = (ParameterizedType) type;
+                    Type[] typeArguments = paramType.getActualTypeArguments();
+                    if (typeArguments.length == 2 &&
+                            typeArguments[0].equals(String.class) &&
+                            typeArguments[1].equals(Object.class)) {
+                        return p;
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     // ==================== GESTION DES URL ====================
@@ -177,8 +223,6 @@ public class Helper {
         }
         return url;
     }
-
-    // ==================== UTILITAIRES REGEX ====================
 
     private boolean matchesUrlPattern(String pattern, String url) {
         try {
@@ -258,27 +302,61 @@ public class Helper {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
         for (int i = 0; i < parameters.length; i++) {
-            arguments[i] = convertParameter(parameters[i], method, request);
+            Parameter p = parameters[i];
+            if (this.mapStringObjectVe(p)) {
+                // raha map <obejct , string>
+                Map<String, String[]> allParams = request.getParameterMap();
+                Map<String, Object> paramMap = new HashMap<>();
+                for (Map.Entry<String, String[]> entry : allParams.entrySet()) {
+                    if (entry.getValue().length == 1) {
+                        paramMap.put(entry.getKey(), entry.getValue()[0]);
+                    } else {
+                        paramMap.put(entry.getKey(), entry.getValue());
+                    }
+                }
+                arguments[i] = paramMap;
+                // System.out.println("atooo");
+                // System.out.println(arguments[i].toString());
+                /// ampiana condtion hoe rah type primitif , sinon rah emp
+            } else {
+                arguments[i] = convertParameter(parameters[i], method, request);
+            }
         }
         return arguments;
     }
 
-    public Object[] getArgumentsWithValue(Method method, Map<String, String> pathVariables) throws Exception {
+    public Object[] getArgumentsWithValue(Method method, Map<String, String> pathVariables, HttpServletRequest request)
+            throws Exception {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
-
         for (int i = 0; i < parameters.length; i++) {
             Parameter parameter = parameters[i];
-            String name = getParameterName(method, parameter);
-            Class<?> type = parameter.getType();
-            String stringValue = pathVariables.get(name);
-            Object value;
-            if (stringValue == null) {
-                value = getDefaultValue(type);
+            if (this.mapStringObjectVe(parameter)) {
+                // raha map <obejct , string>
+                Map<String, String[]> allParams = request.getParameterMap();
+                Map<String, Object> paramMap = new HashMap<>();
+                for (Map.Entry<String, String[]> entry : allParams.entrySet()) {
+                    if (entry.getValue().length == 1) {
+                        paramMap.put(entry.getKey(), entry.getValue()[0]);
+                    } else {
+                        paramMap.put(entry.getKey(), entry.getValue());
+                    }
+                }
+                arguments[i] = paramMap;
+                // System.out.println("atooo");
+                // System.out.println(arguments[i].toString());
             } else {
-                value = convertStringToType(stringValue, type, name);
+                String name = getParameterName(method, parameter);
+                Class<?> type = parameter.getType();
+                String stringValue = pathVariables.get(name);
+                Object value;
+                if (stringValue == null) {
+                    value = getDefaultValue(type);
+                } else {
+                    value = convertStringToType(stringValue, type, name);
+                }
+                arguments[i] = value;
             }
-            arguments[i] = value;
         }
         return arguments;
     }
@@ -287,11 +365,9 @@ public class Helper {
         String paramName = getParameterName(method, parameter);
         String stringValue = request.getParameter(paramName);
         Class<?> paramType = parameter.getType();
-
         if (stringValue == null) {
             return getDefaultValue(paramType);
         }
-
         return convertStringToType(stringValue, paramType, paramName);
     }
 
