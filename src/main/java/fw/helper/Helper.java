@@ -333,7 +333,7 @@ public class Helper {
                     System.out.println("Instance créée: " + instance);
                     Field [] attributs = instance.getClass().getFields();
                     for (Field field : attributs) {
-                        
+                        // tohizana
                     }
                 } catch (NoSuchMethodException e) {
                     throw new Exception(e.getMessage());
