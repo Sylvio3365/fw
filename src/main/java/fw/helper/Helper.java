@@ -93,11 +93,9 @@ public class Helper {
     private void scanControllerMethods(Class<?> clazz, Map<String, CMethod> mappings) {
         Method[] methods = clazz.getDeclaredMethods();
         for (Method method : methods) {
-            // CORRECTION : Gérer chaque annotation séparément avec la bonne méthode HTTP
             if (method.isAnnotationPresent(GetUrl.class)) {
                 GetUrl annotation = method.getAnnotation(GetUrl.class);
                 String url = annotation.value();
-                // CORRECTION : Stocker avec la clé URL + méthode pour éviter les conflits
                 String key = "GET:" + url;
                 mappings.put(key, new CMethod(clazz, method, "GET"));
             }
@@ -225,8 +223,6 @@ public class Helper {
         }
         return url;
     }
-
-    // ==================== UTILITAIRES REGEX ====================
 
     private boolean matchesUrlPattern(String pattern, String url) {
         try {

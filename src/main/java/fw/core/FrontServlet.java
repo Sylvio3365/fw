@@ -56,26 +56,20 @@ public class FrontServlet extends HttpServlet {
 
     private void defaultServe(HttpServletRequest request, HttpServletResponse response)
             throws IOException, ServletException {
-
         response.setContentType("text/html;charset=UTF-8");
-
         try {
             String url = this.h.getUrlAfterContext(request);
             ServletContext context = getServletContext();
             Map<String, CMethod> urlMappings = (Map<String, CMethod>) context.getAttribute("urlMappings");
-
             if (!this.h.findByUrl(urlMappings, url, request)) {
                 sendNotFound(response, url);
                 return;
             }
-
             String originalUrl = h.getOriginalUrl(urlMappings, url, request);
             CMethod cm = h.getUrlInMapping(urlMappings, url, request);
-
             if (cm == null) {
                 throw new ServletException("Aucune classe méthode trouvée pour l'URL: " + url);
             }
-
             if (!isHttpMethodAllowed(cm, request)) {
                 sendMethodNotAllowed(response, request.getMethod(), url);
                 return;
@@ -94,13 +88,11 @@ public class FrontServlet extends HttpServlet {
     }
 
     private boolean isHttpMethodAllowed(CMethod cm, HttpServletRequest request) {
-        String requestMethod = request.getMethod(); // GET, POST, etc.
-        String methodHttp = cm.getHttpMethod(); // Méthode stockée dans CMethod
-
+        String requestMethod = request.getMethod();
+        String methodHttp = cm.getHttpMethod();
         if ("MyUrl".equals(methodHttp)) {
             return "GET".equals(requestMethod) || "POST".equals(requestMethod);
         }
-
         return requestMethod.equals(methodHttp);
     }
 
@@ -134,7 +126,6 @@ public class FrontServlet extends HttpServlet {
         Object[] arguments = h.getArgumentsWithValue(method, pathVariables, request);
         Object instance = cls.getDeclaredConstructor().newInstance();
         Class<?> returnType = method.getReturnType();
-
         if (returnType.equals(String.class)) {
             Object result = method.invoke(instance, arguments);
             sendStringResponse(response, url, originalUrl, result, cm.getHttpMethod());
