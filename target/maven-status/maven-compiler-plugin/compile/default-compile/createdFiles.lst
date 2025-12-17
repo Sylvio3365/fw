@@ -4,6 +4,7 @@ fw/annotation/controller/MyController.class
 fw/method/HttpMethods.class
 fw/core/FrontServlet.class
 fw/util/ModelView.class
+fw/annotation/json/MyJson.class
 fw/util/CMethod.class
 fw/annotation/url/MyUrl.class
 fw/annotation/param/MyRequestParam.class
