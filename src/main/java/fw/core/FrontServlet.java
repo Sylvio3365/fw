@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -17,7 +18,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fw.annotation.json.MyJson;
 import fw.helper.Helper;
@@ -104,7 +104,8 @@ public class FrontServlet extends HttpServlet {
         return requestMethod.equals(methodHttp);
     }
 
-    private void rahaMyJson(Method method, Object instance, Object[] arguments, HttpServletResponse response) throws IOException {
+    private void rahaMyJson(Method method, Object instance, Object[] arguments, HttpServletResponse response)
+            throws IOException {
         try {
 
             Object result = method.invoke(instance, arguments);
@@ -123,32 +124,41 @@ public class FrontServlet extends HttpServlet {
                 responseMap.put("data", list);
                 responseMap.put("count", list.size());
             } else {
-                // Pour les objets simples
                 responseMap.put("data", result);
             }
 
-            // Convertir en JSON
             ObjectMapper mapper = new ObjectMapper();
             String json = mapper.writeValueAsString(responseMap);
 
-            // Configurer la réponse HTTP
             response.setContentType("application/json");
             response.setCharacterEncoding("UTF-8");
 
-            // Écrire le JSON dans la réponse
             PrintWriter out = response.getWriter();
             out.print(json);
             out.flush();
 
         } catch (Exception e) {
-            // En cas d'erreur, retourner success: false
+            Throwable cause = e;
+            if (e instanceof InvocationTargetException && e.getCause() != null) {
+                cause = e.getCause();
+            }
+
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+
+            String errorCode = "INTERNAL_ERROR";
+            String clientMessage = "Une erreur interne est survenue.";
+
+            if (cause instanceof IllegalArgumentException) {
+                errorCode = "INVALID_ARGUMENT";
+                clientMessage = cause.getMessage();
+            }
 
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("success", false);
-            errorResponse.put("error", e.getClass().getSimpleName());
-            errorResponse.put("message", e.getMessage());
+            errorResponse.put("error", errorCode);
+            errorResponse.put("message", clientMessage);
             errorResponse.put("timestamp", new Date());
 
             ObjectMapper mapper = new ObjectMapper();
@@ -168,11 +178,18 @@ public class FrontServlet extends HttpServlet {
         Method method = cm.getMethod();
         Object[] arguments = h.getArgumentsWithValue(method, request);
         Object instance = cls.getDeclaredConstructor().newInstance();
-
+        Class<?> returnType = method.getReturnType();
         if (method.isAnnotationPresent(MyJson.class)) {
-            this.rahaMyJson(method, instance, arguments, response);
+            if (Void.TYPE.equals(returnType) || Void.class.equals(returnType)) {
+                sendUnsupportedTypeResponse(response, url);
+                return;
+            }
+            try {
+                this.rahaMyJson(method, instance, arguments, response);
+            } catch (Exception e) {
+                sendJsonSerializationErrorResponse(response, url, e);
+            }
         } else {
-            Class<?> returnType = method.getReturnType();
             if (returnType.equals(String.class)) {
                 Object result = method.invoke(instance, arguments);
                 sendStringResponse(response, url, originalUrl, result, cm.getHttpMethod());
@@ -183,6 +200,13 @@ public class FrontServlet extends HttpServlet {
                 sendUnsupportedTypeResponse(response, url);
             }
         }
+    }
+
+    private void sendJsonSerializationErrorResponse(HttpServletResponse response, String url, Exception e)
+            throws IOException {
+        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        response.setContentType("text/plain;charset=UTF-8");
+        response.getWriter().write("Failed to serialize JSON response for '" + url + "': " + e.getMessage());
     }
 
     private void processPatternMatch(HttpServletRequest request, HttpServletResponse response,
