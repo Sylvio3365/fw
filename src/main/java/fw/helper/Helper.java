@@ -303,9 +303,11 @@ public class Helper {
         Object[] arguments = new Object[parameters.length];
         for (int i = 0; i < parameters.length; i++) {
             Parameter p = parameters[i];
+            System.out.println(p.toString());
             if (this.mapStringObjectVe(p)) {
-                // raha map <obejct , string>
+                System.out.println("raha map <obejct , string>");
                 Map<String, String[]> allParams = request.getParameterMap();
+                System.out.println(allParams.size());
                 Map<String, Object> paramMap = new HashMap<>();
                 for (Map.Entry<String, String[]> entry : allParams.entrySet()) {
                     if (entry.getValue().length == 1) {
@@ -313,12 +315,15 @@ public class Helper {
                     } else {
                         paramMap.put(entry.getKey(), entry.getValue());
                     }
+                    System.out.println(entry.toString());
                 }
                 arguments[i] = paramMap;
+                
                 // System.out.println("atooo");
                 // System.out.println(arguments[i].toString());
-                /// ampiana condtion hoe rah type primitif , sinon rah emp
+                // / ampiana condtion hoe rah type primitif , sinon rah emp
             } else {
+                System.out.println("raha primitif");
                 arguments[i] = convertParameter(parameters[i], method, request);
             }
         }
