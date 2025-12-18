@@ -104,7 +104,8 @@ public class FrontServlet extends HttpServlet {
         return requestMethod.equals(methodHttp);
     }
 
-    private void rahaMyJson(Method method, Object instance, Object[] arguments, HttpServletResponse response) throws IOException {
+    private void rahaMyJson(Method method, Object instance, Object[] arguments, HttpServletResponse response)
+            throws IOException {
         try {
 
             Object result = method.invoke(instance, arguments);
@@ -177,11 +178,18 @@ public class FrontServlet extends HttpServlet {
         Method method = cm.getMethod();
         Object[] arguments = h.getArgumentsWithValue(method, request);
         Object instance = cls.getDeclaredConstructor().newInstance();
-
+        Class<?> returnType = method.getReturnType();
         if (method.isAnnotationPresent(MyJson.class)) {
-            this.rahaMyJson(method, instance, arguments, response);
+            if (Void.TYPE.equals(returnType) || Void.class.equals(returnType)) {
+                sendUnsupportedTypeResponse(response, url);
+                return;
+            }
+            try {
+                this.rahaMyJson(method, instance, arguments, response);
+            } catch (Exception e) {
+                sendJsonSerializationErrorResponse(response, url, e);
+            }
         } else {
-            Class<?> returnType = method.getReturnType();
             if (returnType.equals(String.class)) {
                 Object result = method.invoke(instance, arguments);
                 sendStringResponse(response, url, originalUrl, result, cm.getHttpMethod());
@@ -192,6 +200,13 @@ public class FrontServlet extends HttpServlet {
                 sendUnsupportedTypeResponse(response, url);
             }
         }
+    }
+
+    private void sendJsonSerializationErrorResponse(HttpServletResponse response, String url, Exception e)
+            throws IOException {
+        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        response.setContentType("text/plain;charset=UTF-8");
+        response.getWriter().write("Failed to serialize JSON response for '" + url + "': " + e.getMessage());
     }
 
     private void processPatternMatch(HttpServletRequest request, HttpServletResponse response,
