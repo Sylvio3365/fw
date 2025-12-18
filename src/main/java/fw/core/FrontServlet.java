@@ -17,6 +17,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fw.annotation.json.MyJson;
 import fw.helper.Helper;
@@ -103,6 +104,62 @@ public class FrontServlet extends HttpServlet {
         return requestMethod.equals(methodHttp);
     }
 
+    private void rahaMyJson(Method method, Object instance, Object[] arguments, HttpServletResponse response) throws IOException {
+        try {
+
+            Object result = method.invoke(instance, arguments);
+
+            Map<String, Object> responseMap = new HashMap<>();
+            responseMap.put("success", true);
+            responseMap.put("timestamp", new Date());
+
+            if (result instanceof List) {
+                List<?> list = (List<?>) result;
+                responseMap.put("data", list);
+                responseMap.put("count", list.size());
+            } else if (result instanceof Collection) {
+                Collection<?> collection = (Collection<?>) result;
+                List<?> list = new ArrayList<>(collection);
+                responseMap.put("data", list);
+                responseMap.put("count", list.size());
+            } else {
+                // Pour les objets simples
+                responseMap.put("data", result);
+            }
+
+            // Convertir en JSON
+            ObjectMapper mapper = new ObjectMapper();
+            String json = mapper.writeValueAsString(responseMap);
+
+            // Configurer la réponse HTTP
+            response.setContentType("application/json");
+            response.setCharacterEncoding("UTF-8");
+
+            // Écrire le JSON dans la réponse
+            PrintWriter out = response.getWriter();
+            out.print(json);
+            out.flush();
+
+        } catch (Exception e) {
+            // En cas d'erreur, retourner success: false
+            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            response.setContentType("application/json");
+
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("error", e.getClass().getSimpleName());
+            errorResponse.put("message", e.getMessage());
+            errorResponse.put("timestamp", new Date());
+
+            ObjectMapper mapper = new ObjectMapper();
+            String errorJson = mapper.writeValueAsString(errorResponse);
+
+            PrintWriter out = response.getWriter();
+            out.print(errorJson);
+            out.flush();
+        }
+    }
+
     private void processExactMatch(HttpServletRequest request, HttpServletResponse response,
             String url, String originalUrl, CMethod cm)
             throws Exception {
@@ -113,61 +170,7 @@ public class FrontServlet extends HttpServlet {
         Object instance = cls.getDeclaredConstructor().newInstance();
 
         if (method.isAnnotationPresent(MyJson.class)) {
-            try {
-                // Exécuter la méthode pour obtenir l'objet résultat
-                Object result = method.invoke(instance, arguments);
-
-                // Créer une structure de réponse standardisée
-                Map<String, Object> responseMap = new HashMap<>();
-                responseMap.put("success", true);
-                responseMap.put("timestamp", new Date());
-
-                // Vérifier si c'est une liste
-                if (result instanceof List) {
-                    List<?> list = (List<?>) result;
-                    responseMap.put("data", list);
-                    responseMap.put("count", list.size());
-                } else if (result instanceof Collection) {
-                    Collection<?> collection = (Collection<?>) result;
-                    List<?> list = new ArrayList<>(collection);
-                    responseMap.put("data", list);
-                    responseMap.put("count", list.size());
-                } else {
-                    // Pour les objets simples
-                    responseMap.put("data", result);
-                }
-
-                // Convertir en JSON
-                ObjectMapper mapper = new ObjectMapper();
-                String json = mapper.writeValueAsString(responseMap);
-
-                // Configurer la réponse HTTP
-                response.setContentType("application/json");
-                response.setCharacterEncoding("UTF-8");
-
-                // Écrire le JSON dans la réponse
-                PrintWriter out = response.getWriter();
-                out.print(json);
-                out.flush();
-
-            } catch (Exception e) {
-                // En cas d'erreur, retourner success: false
-                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                response.setContentType("application/json");
-
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("success", false);
-                errorResponse.put("error", e.getClass().getSimpleName());
-                errorResponse.put("message", e.getMessage());
-                errorResponse.put("timestamp", new Date());
-
-                ObjectMapper mapper = new ObjectMapper();
-                String errorJson = mapper.writeValueAsString(errorResponse);
-
-                PrintWriter out = response.getWriter();
-                out.print(errorJson);
-                out.flush();
-            }
+            this.rahaMyJson(method, instance, arguments, response);
         } else {
             Class<?> returnType = method.getReturnType();
             if (returnType.equals(String.class)) {
