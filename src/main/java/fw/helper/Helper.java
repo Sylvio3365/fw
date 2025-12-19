@@ -7,6 +7,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
@@ -23,6 +24,7 @@ import fw.annotation.url.MyUrl;
 import fw.annotation.url.PostUrl;
 import fw.util.CMethod;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.Part;
 
 public class Helper {
 
@@ -305,9 +307,9 @@ public class Helper {
             Parameter p = parameters[i];
             System.out.println(p.toString());
             if (this.mapStringObjectVe(p)) {
-                System.out.println("raha map <obejct , string>");
+                System.out.println("raha map <object , string>");
                 Map<String, String[]> allParams = request.getParameterMap();
-                System.out.println(allParams.size());
+
                 Map<String, Object> paramMap = new HashMap<>();
                 for (Map.Entry<String, String[]> entry : allParams.entrySet()) {
                     if (entry.getValue().length == 1) {
@@ -318,7 +320,32 @@ public class Helper {
                     System.out.println(entry.toString());
                 }
                 arguments[i] = paramMap;
-                
+
+                List<Part> fichiers = new ArrayList<>();
+                Collection<Part> allParts = request.getParts();
+                for (Part part : allParts) {
+                    if (part.getName() != null && part.getName().equals("fichiers[]")
+                            && part.getSize() > 0 && part.getSubmittedFileName() != null
+                            && !part.getSubmittedFileName().isEmpty()) {
+
+                        fichiers.add(part);
+                        System.out.println("Nom du champ: " + part.getName());
+                        System.out.println("Nom du fichier: " + part.getSubmittedFileName());
+
+                        // Récupérer le tableau de bytes
+                        byte[] bytes = part.getInputStream().readAllBytes();
+                        System.out.println("Taille du tableau: " + bytes.length + " bytes");
+
+                        // Afficher les premiers bytes (pour debug)
+                        System.out.print("Premiers 20 bytes: ");
+                        for (int k = 0; k < Math.min(bytes.length, 20); k++) {
+                            System.out.printf("%02X ", bytes[k]);
+                        }
+                        System.out.println();
+                    }
+                }
+
+                System.out.println("Nombre de fichiers reçus: " + fichiers.size());
                 // System.out.println("atooo");
                 // System.out.println(arguments[i].toString());
                 // / ampiana condtion hoe rah type primitif , sinon rah emp
