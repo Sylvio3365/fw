@@ -128,6 +128,32 @@ public class Helper {
         return false;
     }
 
+    public boolean misyMapStringBytesVe(Method m) {
+        Parameter[] parameters = m.getParameters();
+        for (Parameter p : parameters) {
+            if (this.mapStringBytesVe(p)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean mapStringBytesVe(Parameter p) {
+        if (Map.class.isAssignableFrom(p.getType())) {
+            Type type = p.getParameterizedType();
+            if (type instanceof ParameterizedType) {
+                ParameterizedType paramType = (ParameterizedType) type;
+                Type[] typeArguments = paramType.getActualTypeArguments();
+                if (typeArguments.length == 2 &&
+                        typeArguments[0].equals(String.class) &&
+                        typeArguments[1].equals(byte[].class)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     public boolean mapStringObjectVe(Parameter p) {
         if (Map.class.isAssignableFrom(p.getType())) {
             Type type = p.getParameterizedType();
@@ -305,9 +331,9 @@ public class Helper {
         Object[] arguments = new Object[parameters.length];
         for (int i = 0; i < parameters.length; i++) {
             Parameter p = parameters[i];
-            System.out.println(p.toString());
+            System.out.println("--Prametre name : " + p.getName());
             if (this.mapStringObjectVe(p)) {
-                System.out.println("raha map <object , string>");
+                System.out.println("==>raha map <object , string>");
                 Map<String, String[]> allParams = request.getParameterMap();
 
                 Map<String, Object> paramMap = new HashMap<>();
@@ -320,41 +346,36 @@ public class Helper {
                     System.out.println(entry.toString());
                 }
                 arguments[i] = paramMap;
-
-                List<Part> fichiers = new ArrayList<>();
+            }
+            if (this.mapStringBytesVe(p)) {
+                System.out.println("==>raha map <object , bytes>");
                 Collection<Part> allParts = request.getParts();
-                for (Part part : allParts) {
-                    if (part.getName() != null && part.getName().equals("fichiers[]")
-                            && part.getSize() > 0 && part.getSubmittedFileName() != null
-                            && !part.getSubmittedFileName().isEmpty()) {
-
-                        fichiers.add(part);
-                        System.out.println("Nom du champ: " + part.getName());
-                        System.out.println("Nom du fichier: " + part.getSubmittedFileName());
-
-                        // Récupérer le tableau de bytes
-                        byte[] bytes = part.getInputStream().readAllBytes();
-                        System.out.println("Taille du tableau: " + bytes.length + " bytes");
-
-                        // Afficher les premiers bytes (pour debug)
-                        System.out.print("Premiers 20 bytes: ");
-                        for (int k = 0; k < Math.min(bytes.length, 20); k++) {
-                            System.out.printf("%02X ", bytes[k]);
+                Map<String, byte[]> temp = new HashMap<>();
+                if (this.misyFichierAttacheVe(allParts)) {
+                    for (Part part : allParts) {
+                        if (part.getName() != null && part.getName().equals("fichiers[]")
+                                && part.getSize() > 0 && part.getSubmittedFileName() != null
+                                && !part.getSubmittedFileName().isEmpty()) {
+                            temp.put(part.getName(), part.getInputStream().readAllBytes());
                         }
-                        System.out.println();
                     }
                 }
-
-                System.out.println("Nombre de fichiers reçus: " + fichiers.size());
-                // System.out.println("atooo");
-                // System.out.println(arguments[i].toString());
-                // / ampiana condtion hoe rah type primitif , sinon rah emp
+                for(Map.Entry<String,byte[]> entry : temp.entrySet()) {
+                    System.out.println("--> " + entry.getKey() + " value = " + entry.getValue());
+                }
             } else {
-                System.out.println("raha primitif");
+                System.out.println("==>raha primitif");
                 arguments[i] = convertParameter(parameters[i], method, request);
             }
         }
         return arguments;
+    }
+
+    private boolean misyFichierAttacheVe(Collection<Part> allParts) {
+        if (allParts.size() > 0) {
+            return true;
+        }
+        return false;
     }
 
     public Object[] getArgumentsWithValue(Method method, Map<String, String> pathVariables, HttpServletRequest request)
