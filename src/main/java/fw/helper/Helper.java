@@ -195,12 +195,10 @@ public class Helper {
         String method = request.getMethod(); // GET, POST, etc.
         String exactKey = method + ":" + url;
 
-        // Vérifier d'abord la correspondance exacte avec méthode HTTP
         if (mappings.containsKey(exactKey)) {
             return true;
         }
 
-        // Vérifier les patterns avec variables pour cette méthode HTTP
         for (String key : mappings.keySet()) {
             if (key.startsWith(method + ":") && key.contains("{") && key.contains("}")) {
                 String pattern = key.substring(method.length() + 1); // Enlever "METHOD:"
@@ -216,12 +214,10 @@ public class Helper {
         String method = request.getMethod();
         String exactKey = method + ":" + url;
 
-        // Correspondance exacte
         CMethod exactMatch = mappings.get(exactKey);
         if (exactMatch != null)
             return exactMatch;
 
-        // Recherche par pattern
         for (Map.Entry<String, CMethod> entry : mappings.entrySet()) {
             String key = entry.getKey();
             if (key.startsWith(method + ":") && key.contains("{") && key.contains("}")) {
@@ -293,15 +289,11 @@ public class Helper {
         return variables;
     }
 
-    // ==================== GESTION DES REQUÊTES ====================
-
     public String getUrlAfterContext(HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         String contextPath = request.getContextPath();
         return requestURI.substring(contextPath.length());
     }
-
-    // ==================== GESTION DES PARAMÈTRES ====================
 
     public List<String> getParametersName(Method method) {
         List<String> names = new ArrayList<>();
@@ -329,14 +321,16 @@ public class Helper {
     public Object[] getArgumentsWithValue(Method method, HttpServletRequest request) throws Exception {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
+
         for (int i = 0; i < parameters.length; i++) {
             Parameter p = parameters[i];
-            System.out.println("--Prametre name : " + p.getName());
-            if (this.mapStringObjectVe(p)) {
-                System.out.println("==>raha map <object , string>");
-                Map<String, String[]> allParams = request.getParameterMap();
+            System.out.println("--Paramètre name : " + p.getName());
 
+            if (this.mapStringObjectVe(p)) {
+                System.out.println("==> map <String, Object>");
+                Map<String, String[]> allParams = request.getParameterMap();
                 Map<String, Object> paramMap = new HashMap<>();
+
                 for (Map.Entry<String, String[]> entry : allParams.entrySet()) {
                     if (entry.getValue().length == 1) {
                         paramMap.put(entry.getKey(), entry.getValue()[0]);
@@ -346,34 +340,52 @@ public class Helper {
                     System.out.println(entry.toString());
                 }
                 arguments[i] = paramMap;
-            }
-            if (this.mapStringBytesVe(p)) {
-                System.out.println("==>raha map <object , bytes>");
-                Collection<Part> allParts = request.getParts();
-                Map<String, byte[]> temp = new HashMap<>();
-                if (this.misyFichierAttacheVe(allParts)) {
+            } else if (this.mapStringBytesVe(p)) {
+                System.out.println("==> map <String, byte[]>");
+                if (request.getContentType() != null &&
+                        request.getContentType().toLowerCase().startsWith("multipart/form-data")) {
+
+                    Collection<Part> allParts = request.getParts();
+                    Map<String, byte[]> fileMap = new HashMap<>();
+
                     for (Part part : allParts) {
-                        if (part.getName() != null && part.getName().equals("fichiers[]")
-                                && part.getSize() > 0 && part.getSubmittedFileName() != null
-                                && !part.getSubmittedFileName().isEmpty()) {
-                            temp.put(part.getName(), part.getInputStream().readAllBytes());
+                        if (part.getName() != null &&
+                                part.getSize() > 0 &&
+                                part.getSubmittedFileName() != null &&
+                                !part.getSubmittedFileName().isEmpty()) {
+
+                            fileMap.put(part.getSubmittedFileName(), part.getInputStream().readAllBytes());
                         }
                     }
-                }
-                for(Map.Entry<String,byte[]> entry : temp.entrySet()) {
-                    System.out.println("--> " + entry.getKey() + " value = " + entry.getValue());
+
+                    for (Map.Entry<String, byte[]> entry : fileMap.entrySet()) {
+                        System.out.println("--> " + entry.getKey() + " size = " +
+                                (entry.getValue() != null ? entry.getValue().length : 0) + " bytes");
+                    }
+                    arguments[i] = fileMap;
+                } else {
+                    arguments[i] = new HashMap<String, byte[]>();
                 }
             } else {
-                System.out.println("==>raha primitif");
+                System.out.println("==> type primitif ou autre");
                 arguments[i] = convertParameter(parameters[i], method, request);
             }
         }
         return arguments;
     }
 
-    private boolean misyFichierAttacheVe(Collection<Part> allParts) {
-        if (allParts.size() > 0) {
-            return true;
+    // Méthode pour vérifier si des fichiers sont attachés
+    private boolean misyFichierAttacheVe(Collection<Part> parts) {
+        if (parts == null || parts.isEmpty()) {
+            return false;
+        }
+
+        for (Part part : parts) {
+            if (part.getSize() > 0 &&
+                    part.getSubmittedFileName() != null &&
+                    !part.getSubmittedFileName().isEmpty()) {
+                return true;
+            }
         }
         return false;
     }
