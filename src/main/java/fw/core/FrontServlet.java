@@ -3,6 +3,7 @@ package fw.core;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -24,6 +25,10 @@ import fw.helper.Helper;
 import fw.util.CMethod;
 import fw.util.ModelView;
 
+@MultipartConfig(maxFileSize = 1024 * 1024 * 10,
+        maxRequestSize = 1024 * 1024 * 50,
+        fileSizeThreshold = 1024 * 1024
+)
 public class FrontServlet extends HttpServlet {
 
     private Helper h;
@@ -180,6 +185,7 @@ public class FrontServlet extends HttpServlet {
         Object instance = cls.getDeclaredConstructor().newInstance();
         Class<?> returnType = method.getReturnType();
         if (method.isAnnotationPresent(MyJson.class)) {
+            System.out.println("Misy annotation @MyJson");
             if (Void.TYPE.equals(returnType) || Void.class.equals(returnType)) {
                 sendUnsupportedTypeResponse(response, url);
                 return;
@@ -190,6 +196,7 @@ public class FrontServlet extends HttpServlet {
                 sendJsonSerializationErrorResponse(response, url, e);
             }
         } else {
+            System.out.println("Tsy misy annotation @MyJson");
             if (returnType.equals(String.class)) {
                 Object result = method.invoke(instance, arguments);
                 sendStringResponse(response, url, originalUrl, result, cm.getHttpMethod());

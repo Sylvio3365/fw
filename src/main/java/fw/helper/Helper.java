@@ -7,6 +7,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
@@ -23,6 +24,7 @@ import fw.annotation.url.MyUrl;
 import fw.annotation.url.PostUrl;
 import fw.util.CMethod;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.Part;
 
 public class Helper {
 
@@ -126,6 +128,32 @@ public class Helper {
         return false;
     }
 
+    public boolean misyMapStringBytesVe(Method m) {
+        Parameter[] parameters = m.getParameters();
+        for (Parameter p : parameters) {
+            if (this.mapStringBytesVe(p)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean mapStringBytesVe(Parameter p) {
+        if (Map.class.isAssignableFrom(p.getType())) {
+            Type type = p.getParameterizedType();
+            if (type instanceof ParameterizedType) {
+                ParameterizedType paramType = (ParameterizedType) type;
+                Type[] typeArguments = paramType.getActualTypeArguments();
+                if (typeArguments.length == 2 &&
+                        typeArguments[0].equals(String.class) &&
+                        typeArguments[1].equals(byte[].class)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     public boolean mapStringObjectVe(Parameter p) {
         if (Map.class.isAssignableFrom(p.getType())) {
             Type type = p.getParameterizedType();
@@ -167,12 +195,10 @@ public class Helper {
         String method = request.getMethod(); // GET, POST, etc.
         String exactKey = method + ":" + url;
 
-        // Vérifier d'abord la correspondance exacte avec méthode HTTP
         if (mappings.containsKey(exactKey)) {
             return true;
         }
 
-        // Vérifier les patterns avec variables pour cette méthode HTTP
         for (String key : mappings.keySet()) {
             if (key.startsWith(method + ":") && key.contains("{") && key.contains("}")) {
                 String pattern = key.substring(method.length() + 1); // Enlever "METHOD:"
@@ -188,12 +214,10 @@ public class Helper {
         String method = request.getMethod();
         String exactKey = method + ":" + url;
 
-        // Correspondance exacte
         CMethod exactMatch = mappings.get(exactKey);
         if (exactMatch != null)
             return exactMatch;
 
-        // Recherche par pattern
         for (Map.Entry<String, CMethod> entry : mappings.entrySet()) {
             String key = entry.getKey();
             if (key.startsWith(method + ":") && key.contains("{") && key.contains("}")) {
@@ -265,15 +289,11 @@ public class Helper {
         return variables;
     }
 
-    // ==================== GESTION DES REQUÊTES ====================
-
     public String getUrlAfterContext(HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         String contextPath = request.getContextPath();
         return requestURI.substring(contextPath.length());
     }
-
-    // ==================== GESTION DES PARAMÈTRES ====================
 
     public List<String> getParametersName(Method method) {
         List<String> names = new ArrayList<>();
@@ -301,28 +321,73 @@ public class Helper {
     public Object[] getArgumentsWithValue(Method method, HttpServletRequest request) throws Exception {
         Parameter[] parameters = method.getParameters();
         Object[] arguments = new Object[parameters.length];
+
         for (int i = 0; i < parameters.length; i++) {
             Parameter p = parameters[i];
+            System.out.println("--Paramètre name : " + p.getName());
+
             if (this.mapStringObjectVe(p)) {
-                // raha map <obejct , string>
+                System.out.println("==> map <String, Object>");
                 Map<String, String[]> allParams = request.getParameterMap();
                 Map<String, Object> paramMap = new HashMap<>();
+
                 for (Map.Entry<String, String[]> entry : allParams.entrySet()) {
                     if (entry.getValue().length == 1) {
                         paramMap.put(entry.getKey(), entry.getValue()[0]);
                     } else {
                         paramMap.put(entry.getKey(), entry.getValue());
                     }
+                    System.out.println(entry.toString());
                 }
                 arguments[i] = paramMap;
-                // System.out.println("atooo");
-                // System.out.println(arguments[i].toString());
-                /// ampiana condtion hoe rah type primitif , sinon rah emp
+            } else if (this.mapStringBytesVe(p)) {
+                System.out.println("==> map <String, byte[]>");
+                if (request.getContentType() != null &&
+                        request.getContentType().toLowerCase().startsWith("multipart/form-data")) {
+
+                    Collection<Part> allParts = request.getParts();
+                    Map<String, byte[]> fileMap = new HashMap<>();
+
+                    for (Part part : allParts) {
+                        if (part.getName() != null &&
+                                part.getSize() > 0 &&
+                                part.getSubmittedFileName() != null &&
+                                !part.getSubmittedFileName().isEmpty()) {
+
+                            fileMap.put(part.getSubmittedFileName(), part.getInputStream().readAllBytes());
+                        }
+                    }
+
+                    for (Map.Entry<String, byte[]> entry : fileMap.entrySet()) {
+                        System.out.println("--> " + entry.getKey() + " size = " +
+                                (entry.getValue() != null ? entry.getValue().length : 0) + " bytes");
+                    }
+                    arguments[i] = fileMap;
+                } else {
+                    arguments[i] = new HashMap<String, byte[]>();
+                }
             } else {
+                System.out.println("==> type primitif ou autre");
                 arguments[i] = convertParameter(parameters[i], method, request);
             }
         }
         return arguments;
+    }
+
+    // Méthode pour vérifier si des fichiers sont attachés
+    private boolean misyFichierAttacheVe(Collection<Part> parts) {
+        if (parts == null || parts.isEmpty()) {
+            return false;
+        }
+
+        for (Part part : parts) {
+            if (part.getSize() > 0 &&
+                    part.getSubmittedFileName() != null &&
+                    !part.getSubmittedFileName().isEmpty()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public Object[] getArgumentsWithValue(Method method, Map<String, String> pathVariables, HttpServletRequest request)
