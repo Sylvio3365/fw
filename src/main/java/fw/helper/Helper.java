@@ -427,6 +427,30 @@ public class Helper {
     }
 
     private Object convertParameter(Parameter parameter, Method method, HttpServletRequest request) throws Exception {
+        // Gérer l'annotation @SessionInjection
+        if (parameter.isAnnotationPresent(fw.annotation.session.SessionInjection.class)) {
+            fw.annotation.session.SessionInjection sessionAnnotation = parameter.getAnnotation(fw.annotation.session.SessionInjection.class);
+            String attributeKey = sessionAnnotation.value();
+            
+            fw.session.Session session = (fw.session.Session) request.getAttribute("session");
+            if (session == null) {
+                return null;
+            }
+            
+            if (attributeKey.isEmpty()) {
+                // Retourner la session complète
+                return session;
+            } else {
+                // Retourner un attribut spécifique de la session
+                return session.getAttribute(attributeKey);
+            }
+        }
+        
+        // Gérer HttpServletRequest
+        if (parameter.getType().equals(jakarta.servlet.http.HttpServletRequest.class)) {
+            return request;
+        }
+        
         String paramName = getParameterName(method, parameter);
         String stringValue = request.getParameter(paramName);
         Class<?> paramType = parameter.getType();
