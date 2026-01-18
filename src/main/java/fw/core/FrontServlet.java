@@ -24,6 +24,9 @@ import fw.annotation.json.MyJson;
 import fw.helper.Helper;
 import fw.util.CMethod;
 import fw.util.ModelView;
+import fw.session.SessionManager;
+import fw.session.SessionUtils;
+import fw.session.Session;
 
 @MultipartConfig(maxFileSize = 1024 * 1024 * 10,
         maxRequestSize = 1024 * 1024 * 50,
@@ -44,6 +47,25 @@ public class FrontServlet extends HttpServlet {
     @Override
     protected void service(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
+        
+        // Gérer la session
+        String sessionId = SessionUtils.createSessionIdFromRequest(request);
+        SessionManager sessionManager = SessionManager.getInstance();
+        
+        Session session = sessionManager.getSession(sessionId);
+        boolean isNewSession = false;
+        if (session == null) {
+            session = sessionManager.createSession(sessionId);
+            isNewSession = true;
+        }
+        
+        // Ajouter la session à la requête
+        request.setAttribute("session", session);
+        
+        // Définir le cookie de session uniquement pour les nouvelles sessions
+        isNewSession = isNewSession || sessionManager.isNewSession(sessionId);
+        SessionUtils.setSessionCookie(response, sessionId, isNewSession);
+        
         if (ressourceExist(request)) {
             customServe(request, response);
         } else {
@@ -260,7 +282,15 @@ public class FrontServlet extends HttpServlet {
             request.setAttribute(entry.getKey(), entry.getValue());
         }
 
-        RequestDispatcher dispatcher = request.getRequestDispatcher(view);
+        // Construire le chemin vers la vue JSP
+        String viewPath;
+        if (view.startsWith("/")) {
+            viewPath = view;
+        } else {
+            viewPath = "/views/" + view + ".jsp";
+        }
+        
+        RequestDispatcher dispatcher = request.getRequestDispatcher(viewPath);
         dispatcher.forward(request, response);
     }
 
