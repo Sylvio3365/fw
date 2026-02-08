@@ -5,3 +5,12 @@ sprint 11 bis :
     @role("admin")
     @role("admin")
     @authorize
+
+todo a faire :
+avant dexcuter une methode (controlleur),
+voir si la methode a une annotaion @authorize
+et @role() ,  si ca correspond au valeur dans la session le role donc excuter ,
+pour gerer les roles cest lexistance du variable de session qui dit que cest auhoriser lappele de la fonction oui ou non
+le developper dans le projet de teste doit mettre dans un fichier .properties que le nom du variable de session est :
+puis creer un Interface UserSession qui a boolean asRole (String ), donc si match login => UserSession (si a role) mettre dans session 
+et on reimplement linterface dans le projet de teste ? avez vous compris ou plus de detaills?
