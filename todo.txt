@@ -1,0 +1,7 @@
+sprint 10 :
+    cle de hashmap , creer une classe KeyFile (name, extensio)
+
+sprint 11 bis :
+    @role("admin")
+    @role("admin")
+    @authorize
