@@ -1,7 +1,9 @@
 /home/evil/Bureau/BOSSY/NAINA/fw/src/main/java/fw/annotation/url/PostUrl.java
 /home/evil/Bureau/BOSSY/NAINA/fw/src/main/java/fw/annotation/url/GetUrl.java
+/home/evil/Bureau/BOSSY/NAINA/fw/src/main/java/fw/security/UserSession.java
 /home/evil/Bureau/BOSSY/NAINA/fw/src/main/java/fw/core/FrontServlet.java
 /home/evil/Bureau/BOSSY/NAINA/fw/src/main/java/fw/session/SessionManager.java
+/home/evil/Bureau/BOSSY/NAINA/fw/src/main/java/fw/annotation/security/Role.java
 /home/evil/Bureau/BOSSY/NAINA/fw/src/main/java/fw/annotation/json/MyJson.java
 /home/evil/Bureau/BOSSY/NAINA/fw/src/main/java/fw/annotation/param/MyRequestParam.java
 /home/evil/Bureau/BOSSY/NAINA/fw/src/main/java/fw/annotation/session/SessionInjection.java
@@ -10,7 +12,9 @@
 /home/evil/Bureau/BOSSY/NAINA/fw/src/main/java/fw/method/HttpMethods.java
 /home/evil/Bureau/BOSSY/NAINA/fw/src/main/java/fw/annotation/url/MyUrl.java
 /home/evil/Bureau/BOSSY/NAINA/fw/src/main/java/fw/helper/Helper.java
+/home/evil/Bureau/BOSSY/NAINA/fw/src/main/java/fw/annotation/security/Authorize.java
 /home/evil/Bureau/BOSSY/NAINA/fw/src/main/java/fw/annotation/controller/MyController.java
+/home/evil/Bureau/BOSSY/NAINA/fw/src/main/java/fw/config/AppConfig.java
 /home/evil/Bureau/BOSSY/NAINA/fw/src/main/java/fw/helper/SessionInjectionHelper.java
 /home/evil/Bureau/BOSSY/NAINA/fw/src/main/java/fw/session/SessionUtils.java
 /home/evil/Bureau/BOSSY/NAINA/fw/src/main/java/fw/util/CMethod.java

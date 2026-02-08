@@ -1,5 +1,6 @@
 fw/helper/Helper.class
 fw/session/SessionManager.class
+fw/annotation/security/Authorize.class
 fw/method/HttpMethods.class
 fw/core/FrontServlet.class
 fw/helper/SessionInjectionHelper.class
@@ -9,8 +10,11 @@ fw/annotation/url/MyUrl.class
 fw/session/Session.class
 fw/annotation/url/GetUrl.class
 fw/annotation/controller/MyController.class
+fw/config/AppConfig.class
 fw/util/ModelView.class
+fw/annotation/security/Role.class
 fw/session/SessionUtils.class
 fw/annotation/json/MyJson.class
+fw/security/UserSession.class
 fw/annotation/param/MyRequestParam.class
 fw/annotation/url/PostUrl.class

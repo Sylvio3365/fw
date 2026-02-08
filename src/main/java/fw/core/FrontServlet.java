@@ -21,17 +21,18 @@ import java.util.List;
 import java.util.Map;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fw.annotation.json.MyJson;
+import fw.annotation.security.Authorize;
+import fw.annotation.security.Role;
+import fw.config.AppConfig;
 import fw.helper.Helper;
 import fw.util.CMethod;
 import fw.util.ModelView;
 import fw.session.SessionManager;
 import fw.session.SessionUtils;
 import fw.session.Session;
+import fw.security.UserSession;
 
-@MultipartConfig(maxFileSize = 1024 * 1024 * 10,
-        maxRequestSize = 1024 * 1024 * 50,
-        fileSizeThreshold = 1024 * 1024
-)
+@MultipartConfig(maxFileSize = 1024 * 1024 * 10, maxRequestSize = 1024 * 1024 * 50, fileSizeThreshold = 1024 * 1024)
 public class FrontServlet extends HttpServlet {
 
     private Helper h;
@@ -47,25 +48,25 @@ public class FrontServlet extends HttpServlet {
     @Override
     protected void service(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        
+
         // Gérer la session
         String sessionId = SessionUtils.createSessionIdFromRequest(request);
         SessionManager sessionManager = SessionManager.getInstance();
-        
+
         Session session = sessionManager.getSession(sessionId);
         boolean isNewSession = false;
         if (session == null) {
             session = sessionManager.createSession(sessionId);
             isNewSession = true;
         }
-        
+
         // Ajouter la session à la requête
         request.setAttribute("session", session);
-        
+
         // Définir le cookie de session uniquement pour les nouvelles sessions
         isNewSession = isNewSession || sessionManager.isNewSession(sessionId);
         SessionUtils.setSessionCookie(response, sessionId, isNewSession);
-        
+
         if (ressourceExist(request)) {
             customServe(request, response);
         } else {
@@ -89,6 +90,7 @@ public class FrontServlet extends HttpServlet {
         getServletContext().getNamedDispatcher("default").forward(request, response);
     }
 
+    @SuppressWarnings("unchecked")
     private void defaultServe(HttpServletRequest request, HttpServletResponse response)
             throws IOException, ServletException {
         response.setContentType("text/html;charset=UTF-8");
@@ -197,12 +199,80 @@ public class FrontServlet extends HttpServlet {
         }
     }
 
+    private boolean checkAuthorization(Method method, HttpServletRequest request, HttpServletResponse response)
+            throws IOException {
+        // Vérifier si la méthode ou la classe a @Authorize
+        Authorize authorizeMethod = method.getAnnotation(Authorize.class);
+        Authorize authorizeClass = method.getDeclaringClass().getAnnotation(Authorize.class);
+        
+        if (authorizeMethod == null && authorizeClass == null) {
+            // Pas d'annotation @Authorize, la méthode est publique
+            return true;
+        }
+
+        // L'utilisateur doit avoir une session avec un objet UserSession
+        Session session = (Session) request.getAttribute("session");
+        if (session == null) {
+            sendForbiddenResponse(response, "Pas de session trouvée");
+            return false;
+        }
+
+        // Lire le nom de la clé de session depuis app.properties
+        String userSessionKey = AppConfig.getSessionUserKey();
+        
+        UserSession userSession = (UserSession) session.getAttribute(userSessionKey);
+        if (userSession == null) {
+            sendForbiddenResponse(response, "Utilisateur non authentifié");
+            return false;
+        }
+
+        // Vérifier les rôles si @Role est présent
+        Role roleMethod = method.getAnnotation(Role.class);
+        Role roleClass = method.getDeclaringClass().getAnnotation(Role.class);
+        
+        Role roleToCheck = roleMethod != null ? roleMethod : roleClass;
+        
+        if (roleToCheck != null) {
+            String[] allowedRoles = roleToCheck.value();
+            boolean hasRole = false;
+            for (String role : allowedRoles) {
+                if (userSession.hasRole(role)) {
+                    hasRole = true;
+                    break;
+                }
+            }
+            if (!hasRole) {
+                sendForbiddenResponse(response, "Vous n'avez pas le rôle requis");
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private void sendForbiddenResponse(HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        response.setContentType("text/html;charset=UTF-8");
+        try (PrintWriter out = response.getWriter()) {
+            out.println("<html><head><title>Accès refusé</title></head><body>");
+            out.println("<h1>403 - Accès refusé</h1>");
+            out.println("<p>" + message + "</p>");
+            out.println("</body></html>");
+        }
+    }
+
     private void processExactMatch(HttpServletRequest request, HttpServletResponse response,
             String url, String originalUrl, CMethod cm)
             throws Exception {
 
         Class<?> cls = cm.getClazz();
         Method method = cm.getMethod();
+        
+        // Vérifier les autorisations avant d'exécuter la méthode
+        if (!checkAuthorization(method, request, response)) {
+            return;
+        }
+
         Object[] arguments = h.getArgumentsWithValue(method, request);
         Object instance = cls.getDeclaredConstructor().newInstance();
         Class<?> returnType = method.getReturnType();
@@ -244,6 +314,12 @@ public class FrontServlet extends HttpServlet {
             throws Exception {
         Class<?> cls = cm.getClazz();
         Method method = cm.getMethod();
+        
+        // Vérifier les autorisations avant d'exécuter la méthode
+        if (!checkAuthorization(method, request, response)) {
+            return;
+        }
+
         Map<String, String> pathVariables = h.extractPathVariables(originalUrl, url);
         Object[] arguments = h.getArgumentsWithValue(method, pathVariables, request);
         Object instance = cls.getDeclaredConstructor().newInstance();
@@ -282,14 +358,13 @@ public class FrontServlet extends HttpServlet {
             request.setAttribute(entry.getKey(), entry.getValue());
         }
 
-        // Construire le chemin vers la vue JSP
         String viewPath;
         if (view.startsWith("/")) {
             viewPath = view;
         } else {
             viewPath = "/views/" + view + ".jsp";
         }
-        
+
         RequestDispatcher dispatcher = request.getRequestDispatcher(viewPath);
         dispatcher.forward(request, response);
     }
